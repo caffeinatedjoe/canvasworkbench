@@ -1,0 +1,14 @@
+.radial-menu {
+  position: fixed;
+  z-index: 9999;
+  user-select: none;
+  pointer-events: none;
+}
+
+.radial-menu svg {
+  pointer-events: auto;
+}
+
+.radial-menu path:hover {
+  fill: rgba(0,0,0,0.2) !important;
+}

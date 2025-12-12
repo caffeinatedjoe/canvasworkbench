@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Div Workbench</title>
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/radial-menu.css">
 </head>
 <body>
     <div class="viewport" id="viewport">
@@ -18,24 +19,7 @@
             </g>
         </svg>
     </div>
-    <div id="menu" class="radial-menu" aria-hidden="true">
-      <svg class="radial-menu__svg" width="200" height="200" viewBox="0 0 200 200" aria-label="Context menu">
-        <!-- 4 outer quadrants (donut ring) -->
-        <path class="radial-menu__slice radial-menu__slice--circle" d="M100,100 L100,0 A100,100 0 0,1 200,100 Z" id="addCircle" />
-        <path class="radial-menu__slice radial-menu__slice--rect" d="M100,100 L200,100 A100,100 0 0,1 100,200 Z" id="addRect" />
-        <path class="radial-menu__slice radial-menu__slice--line" d="M100,100 L100,200 A100,100 0 0,1 0,100 Z" id="addLine" />
-        <path class="radial-menu__slice radial-menu__slice--text" d="M100,100 L0,100 A100,100 0 0,1 100,0 Z" id="addText" />
-
-        <!-- Inner circle (click to close) -->
-        <circle class="radial-menu__hole" cx="100" cy="100" r="50" id="menuClose" />
-
-        <!-- Minimal labels (optional but useful) -->
-        <text class="radial-menu__label" x="150" y="55" text-anchor="middle">Circle</text>
-        <text class="radial-menu__label" x="160" y="120" text-anchor="middle">Rect</text>
-        <text class="radial-menu__label" x="90" y="165" text-anchor="middle">Line</text>
-        <text class="radial-menu__label" x="45" y="105" text-anchor="middle">Text</text>
-      </svg>
-    </div>
+    <script src="js/RadialMenu.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

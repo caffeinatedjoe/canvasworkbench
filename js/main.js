@@ -9,14 +9,6 @@ const rasterLayer = document.getElementById('rasterLayer');
 const vectorLayer = document.getElementById('vectorLayer');
 const world = document.getElementById('world');
 
-// Radial context menu elements
-const menu = document.getElementById('menu');
-const menuClose = document.getElementById('menuClose');
-const addCircleSlice = document.getElementById('addCircle');
-const addRectSlice = document.getElementById('addRect');
-const addLineSlice = document.getElementById('addLine');
-const addTextSlice = document.getElementById('addText');
-
 // Canvas context
 const ctx = rasterLayer.getContext('2d');
 
@@ -53,7 +45,7 @@ let lastX, lastY;
 viewport.addEventListener('mousedown', (e) => {
     if (e.button === 1) { // middle click
         e.preventDefault();
-        hideMenu();
+        menu.close();
         isPanning = true;
         lastX = e.clientX;
         lastY = e.clientY;
@@ -76,38 +68,12 @@ viewport.addEventListener('mouseup', () => {
     isPanning = false;
 });
 
-// --- MVP radial context menu logic ---
+// --- Radial Menu Module Integration ---
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 let lastContextWorldX = 0;
 let lastContextWorldY = 0;
-
-function isMenuOpen() {
-    return menu.classList.contains('is-open');
-}
-
-function hideMenu() {
-    menu.classList.remove('is-open');
-    menu.setAttribute('aria-hidden', 'true');
-}
-
-function showMenuAtClientPoint(clientX, clientY) {
-    // Menu is 200x200; center on cursor.
-    const desiredLeft = clientX - 100;
-    const desiredTop = clientY - 100;
-
-    // Clamp to viewport so it doesn't go off-screen.
-    const maxLeft = Math.max(0, window.innerWidth - 200);
-    const maxTop = Math.max(0, window.innerHeight - 200);
-    const left = Math.min(Math.max(0, desiredLeft), maxLeft);
-    const top = Math.min(Math.max(0, desiredTop), maxTop);
-
-    menu.style.left = `${left}px`;
-    menu.style.top = `${top}px`;
-    menu.classList.add('is-open');
-    menu.setAttribute('aria-hidden', 'false');
-}
 
 function clientToWorld(clientX, clientY) {
     const rect = viewport.getBoundingClientRect();
@@ -173,6 +139,19 @@ function addTextAt(x, y) {
     world.appendChild(text);
 }
 
+// Create radial menu instance
+const menu = new RadialMenu({
+    innerDiameter: 80,
+    outerDiameter: 160,
+    sections: [
+        { id: 'circle', label: 'Circle', action: () => addCircleAt(lastContextWorldX, lastContextWorldY) },
+        { id: 'rect', label: 'Rectangle', action: () => addRectAt(lastContextWorldX, lastContextWorldY) },
+        { id: 'line', label: 'Line', action: () => addLineAt(lastContextWorldX, lastContextWorldY) },
+        { id: 'text', label: 'Text', action: () => addTextAt(lastContextWorldX, lastContextWorldY) }
+    ],
+    container: document.body
+});
+
 // Prevent default context menu and show custom menu.
 viewport.addEventListener('contextmenu', (e) => {
     e.preventDefault();
@@ -181,59 +160,13 @@ viewport.addEventListener('contextmenu', (e) => {
     const { x, y } = clientToWorld(e.clientX, e.clientY);
     lastContextWorldX = x;
     lastContextWorldY = y;
-    showMenuAtClientPoint(e.clientX, e.clientY);
-});
-
-// Hide on outside click.
-document.addEventListener('mousedown', (e) => {
-    if (!isMenuOpen()) return;
-    if (!menu.contains(e.target)) hideMenu();
-});
-
-// Hide on Escape.
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') hideMenu();
-});
-
-// Prevent clicks inside menu from triggering viewport interactions.
-menu.addEventListener('mousedown', (e) => {
-    e.stopPropagation();
-});
-
-// Inner circle closes the menu.
-menuClose.addEventListener('click', (e) => {
-    e.stopPropagation();
-    hideMenu();
-});
-
-addCircleSlice.addEventListener('click', (e) => {
-    e.stopPropagation();
-    addCircleAt(lastContextWorldX, lastContextWorldY);
-    hideMenu();
-});
-
-addRectSlice.addEventListener('click', (e) => {
-    e.stopPropagation();
-    addRectAt(lastContextWorldX, lastContextWorldY);
-    hideMenu();
-});
-
-addLineSlice.addEventListener('click', (e) => {
-    e.stopPropagation();
-    addLineAt(lastContextWorldX, lastContextWorldY);
-    hideMenu();
-});
-
-addTextSlice.addEventListener('click', (e) => {
-    e.stopPropagation();
-    addTextAt(lastContextWorldX, lastContextWorldY);
-    hideMenu();
+    menu.openAt(e.clientX, e.clientY);
 });
 
 // Zooming: mouse wheel
 viewport.addEventListener('wheel', (e) => {
     e.preventDefault();
-    hideMenu();
+    menu.close();
     const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
     const rect = viewport.getBoundingClientRect();
     const px = e.clientX - rect.left;

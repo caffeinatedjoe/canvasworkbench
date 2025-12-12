@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Radial Menu Module Test</title>
+  <link rel="stylesheet" href="../css/radial-menu.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+    }
+    
+    #test-container {
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+    
+    .instruction {
+      margin-bottom: 20px;
+      font-size: 18px;
+      color: #333;
+    }
+    
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="test-container">
+    <div class="instruction">Right-click anywhere to open the radial menu</div>
+    <button id="openMenuBtn">Open Menu at Center</button>
+    <button id="updateMenuBtn">Update Menu (Add Triangle)</button>
+  </div>
+
+  <script src="../js/RadialMenu.js"></script>
+  <script>
+    // Create menu instance
+    const menu = new RadialMenu({
+      innerDiameter: 80,
+      outerDiameter: 160,
+      sections: [
+        { id: 'circle', label: 'Circle', action: () => console.log('Add Circle') },
+        { id: 'rect', label: 'Rectangle', action: () => console.log('Add Rectangle') },
+        { id: 'line', label: 'Line', action: () => console.log('Add Line') },
+        { id: 'text', label: 'Text', action: () => console.log('Add Text') }
+      ]
+    });
+
+    // Open on right-click
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      menu.openAt(e.clientX, e.clientY);
+    });
+
+    // Button to open menu at center
+    document.getElementById('openMenuBtn').addEventListener('click', () => {
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+      menu.openAt(centerX, centerY);
+    });
+
+    // Button to update menu items
+    document.getElementById('updateMenuBtn').addEventListener('click', () => {
+      menu.updateConfig({
+        sections: [
+          { id: 'circle', label: 'Circle', action: () => console.log('Add Circle') },
+          { id: 'rect', label: 'Rectangle', action: () => console.log('Add Rectangle') },
+          { id: 'line', label: 'Line', action: () => console.log('Add Line') },
+          { id: 'text', label: 'Text', action: () => console.log('Add Text') },
+          { id: 'triangle', label: 'Triangle', action: () => console.log('Add Triangle') }
+        ]
+      });
+      console.log('Menu updated with 5 sections');
+    });
+  </script>
+</body>
+</html>
