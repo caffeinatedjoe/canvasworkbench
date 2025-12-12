@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Test Zone · Fixed Radial Menu</title>
+  <link rel="stylesheet" href="./radial_menu_fixed.css" />
+</head>
+
+<body>
+  <!-- Fixed radial menu (NOT tied to right click). Centered to make UI/UX iteration simple. -->
+  <div id="menu" class="radial-menu radial-menu--center" aria-hidden="false">
+    <svg class="radial-menu__svg" width="200" height="200" viewBox="-2 -2 204 204">
+      <!-- 4 quadrants as a donut ring (inner hole) -->
+      <path class="radial-menu__slice" id="addCircle" d="M100,45 L100,0 A100,100 0 0,1 200,100 L155,100 A55,55 0 0,0 100,45 Z" />
+      <path class="radial-menu__slice" id="addRect" d="M155,100 L200,100 A100,100 0 0,1 100,200 L100,155 A55,55 0 0,0 155,100 Z" />
+      <path class="radial-menu__slice" id="addLine" d="M100,155 L100,200 A100,100 0 0,1 0,100 L45,100 A55,55 0 0,0 100,155 Z" />
+      <path class="radial-menu__slice" id="addText" d="M45,100 L0,100 A100,100 0 0,1 100,0 L100,45 A55,55 0 0,0 45,100 Z" />
+
+      <!-- Labels -->
+      <text class="radial-menu__label" x="150" y="50" text-anchor="middle" dominant-baseline="middle">Circle</text>
+      <text class="radial-menu__label" x="150" y="150" text-anchor="middle" dominant-baseline="middle">Rect</text>
+      <text class="radial-menu__label" x="50" y="150" text-anchor="middle" dominant-baseline="middle">Line</text>
+      <text class="radial-menu__label" x="50" y="50" text-anchor="middle" dominant-baseline="middle">Text</text>
+    </svg>
+  </div>
+
+  <script src="./radial_menu_fixed.js"></script>
+</body>
+</html>
+
