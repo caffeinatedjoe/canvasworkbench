@@ -1,14 +1,16 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f0f0f0;
+}
+
+h1 {
+    color: #333;
+}
+
 .radial-menu {
-  position: fixed;
-  z-index: 9999;
-  user-select: none;
-  pointer-events: none;
-}
-
-.radial-menu svg {
-  pointer-events: auto;
-}
-
-.radial-menu path:hover {
-  fill: rgba(0,0,0,0.2) !important;
+    position: absolute;
+    z-index: 1000;
+    pointer-events: auto;
 }

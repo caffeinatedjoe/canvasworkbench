@@ -139,15 +139,23 @@ function addTextAt(x, y) {
     world.appendChild(text);
 }
 
+// Define icons
+const icons = {
+  circle: { path: 'M 0 0 m -5 0 a 5 5 0 1 0 10 0 a 5 5 0 1 0 -10 0', size: 50, color: 'rgba(0,0,0,0.8)' },
+  line: { path: 'M -5 -5 l 10 10', size: 50, color: 'rgba(0,0,0,0.8)' },
+  rectangle: { path: 'M -8 -5 h 16 v 10 h -16 z', size: 40, color: 'rgba(0,0,0,0.8)' },
+  cursor: { path: 'm 1.872 9.6 l 3.656 -1.48 l -2.736 -6.752 l 4.448 0.08 L -3.76 -9.6 l -0.24 15.592 l 3.144 -3.144 Z', size: 35, color: 'rgba(0,0,0,0.8)' }
+};
+
 // Create radial menu instance
 const menu = new RadialMenu({
-    innerDiameter: 80,
-    outerDiameter: 160,
+    innerDiameter: 70,
+    outerDiameter: 170,
     sections: [
-        { id: 'circle', label: 'Circle', action: () => addCircleAt(lastContextWorldX, lastContextWorldY) },
-        { id: 'rect', label: 'Rectangle', action: () => addRectAt(lastContextWorldX, lastContextWorldY) },
-        { id: 'line', label: 'Line', action: () => addLineAt(lastContextWorldX, lastContextWorldY) },
-        { id: 'text', label: 'Text', action: () => addTextAt(lastContextWorldX, lastContextWorldY) }
+        { id: 'circle', icon: icons.circle, action: () => addCircleAt(lastContextWorldX, lastContextWorldY) },
+        { id: 'rectangle', icon: icons.rectangle, action: () => addRectAt(lastContextWorldX, lastContextWorldY) },
+        { id: 'line', icon: icons.line, action: () => addLineAt(lastContextWorldX, lastContextWorldY) },
+        { id: 'cursor', icon: icons.cursor, action: () => addTextAt(lastContextWorldX, lastContextWorldY) }
     ],
     container: document.body
 });
