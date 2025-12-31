@@ -9,6 +9,12 @@ const rasterLayer = document.getElementById('rasterLayer');
 const vectorLayer = document.getElementById('vectorLayer');
 const world = document.getElementById('world');
 
+// Element manager
+const elementManager = new ElementManager();
+
+// ID counter for elements
+let elementIdCounter = 0;
+
 // Canvas context
 const ctx = rasterLayer.getContext('2d');
 
@@ -41,9 +47,51 @@ window.addEventListener('resize', () => {
 let isPanning = false;
 let lastX, lastY;
 
-// Panning: middle-click drag
+// Dragging variables
+let isDragging = false;
+let dragStartWorldX, dragStartWorldY;
+let dragOccurred = false;
+
+// Scaling variables
+let isScaling = false;
+let scaleCorner;
+let scaleOppositeCorner;
+let initialDistance;
+let initialScales = [];
+
+// Panning: middle-click drag, Dragging: left-click on selected elements, Scaling: left-click on scale handles
 viewport.addEventListener('mousedown', (e) => {
-    if (e.button === 1) { // middle click
+    if (e.button === 0) { // left click
+        const worldPos = clientToWorld(e.clientX, e.clientY);
+        dragStartWorldX = worldPos.x;
+        dragStartWorldY = worldPos.y;
+        // Check if clicked on a scale handle
+        if (e.target.dataset && e.target.dataset.handleType === 'scale') {
+            isScaling = true;
+            scaleCorner = e.target.dataset.corner;
+            const bbox = elementManager.selectedElements.length === 1 ?
+                elementManager.selectedElements[0].getBoundingBox() :
+                elementManager.calculateBoundingBox();
+            scaleOppositeCorner = getOppositeCorner(scaleCorner, bbox);
+            initialDistance = distance(worldPos, scaleOppositeCorner);
+            initialScales = elementManager.selectedElements.map(el => el.scale);
+            e.preventDefault();
+            return;
+        }
+        // Check if clicked on a selected element
+        let clickedElement = null;
+        for (const element of elementManager.elements) {
+            if (e.target === element.svgElement || element.svgElement.contains(e.target)) {
+                clickedElement = element;
+                break;
+            }
+        }
+        if (clickedElement && elementManager.selectedElements.includes(clickedElement)) {
+            isDragging = true;
+            dragOccurred = false;
+            e.preventDefault();
+        }
+    } else if (e.button === 1) { // middle click
         e.preventDefault();
         menu.close();
         isPanning = true;
@@ -53,7 +101,29 @@ viewport.addEventListener('mousedown', (e) => {
 });
 
 viewport.addEventListener('mousemove', (e) => {
-    if (isPanning) {
+    if (isScaling) {
+        const currentWorld = clientToWorld(e.clientX, e.clientY);
+        const currentDistance = distance(currentWorld, scaleOppositeCorner);
+        const factor = currentDistance / initialDistance;
+        elementManager.selectedElements.forEach((element, i) => {
+            element.scale = initialScales[i] * factor;
+            element.updateSvgScale(scaleOppositeCorner);
+        });
+        elementManager.updateHandles();
+        e.preventDefault();
+    } else if (isDragging) {
+        const currentWorld = clientToWorld(e.clientX, e.clientY);
+        const deltaX = currentWorld.x - dragStartWorldX;
+        const deltaY = currentWorld.y - dragStartWorldY;
+        elementManager.selectedElements.forEach(element => {
+            element.move(deltaX, deltaY);
+        });
+        dragStartWorldX = currentWorld.x;
+        dragStartWorldY = currentWorld.y;
+        dragOccurred = true;
+        elementManager.updateHandles();
+        e.preventDefault();
+    } else if (isPanning) {
         const dx = e.clientX - lastX;
         const dy = e.clientY - lastY;
         offsetX += dx;
@@ -65,6 +135,14 @@ viewport.addEventListener('mousemove', (e) => {
 });
 
 viewport.addEventListener('mouseup', () => {
+    if (isScaling) {
+        isScaling = false;
+        elementManager.updateHandles();
+    }
+    if (isDragging) {
+        isDragging = false;
+        elementManager.updateHandles();
+    }
     isPanning = false;
 });
 
@@ -85,6 +163,23 @@ function clientToWorld(clientX, clientY) {
     };
 }
 
+function getOppositeCorner(corner, bbox) {
+    switch (corner) {
+        case 'top-left': return { x: bbox.x + bbox.width, y: bbox.y + bbox.height };
+        case 'top-right': return { x: bbox.x, y: bbox.y + bbox.height };
+        case 'bottom-right': return { x: bbox.x, y: bbox.y };
+        case 'bottom-left': return { x: bbox.x + bbox.width, y: bbox.y };
+        case 'top': return { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height };
+        case 'right': return { x: bbox.x, y: bbox.y + bbox.height / 2 };
+        case 'bottom': return { x: bbox.x + bbox.width / 2, y: bbox.y };
+        case 'left': return { x: bbox.x + bbox.width, y: bbox.y + bbox.height / 2 };
+    }
+}
+
+function distance(p1, p2) {
+    return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+}
+
 function createSvgEl(tag, attrs = {}) {
     const el = document.createElementNS(SVG_NS, tag);
     for (const [k, v] of Object.entries(attrs)) {
@@ -94,37 +189,24 @@ function createSvgEl(tag, attrs = {}) {
 }
 
 function addCircleAt(x, y) {
-    const circle = createSvgEl('circle', {
-        cx: x,
-        cy: y,
-        r: 30,
-        fill: 'rgba(231, 76, 60, 0.9)',
-    });
-    world.appendChild(circle);
+    const id = `circle_${elementIdCounter++}`;
+    const circleElement = new CircleElement(id, x, y, 30, world);
+    circleElement.render();
+    elementManager.addElement(circleElement);
 }
 
 function addRectAt(x, y) {
-    const rect = createSvgEl('rect', {
-        x: x - 50,
-        y: y - 25,
-        width: 100,
-        height: 50,
-        fill: 'rgba(52, 152, 219, 0.9)',
-    });
-    world.appendChild(rect);
+    const id = `rect_${elementIdCounter++}`;
+    const rectElement = new RectangleElement(id, x - 50, y - 25, 100, 50, world);
+    rectElement.render();
+    elementManager.addElement(rectElement);
 }
 
 function addLineAt(x, y) {
-    const line = createSvgEl('line', {
-        x1: x - 60,
-        y1: y - 20,
-        x2: x + 60,
-        y2: y + 20,
-        stroke: 'rgba(46, 204, 113, 0.95)',
-        'stroke-width': 6,
-        'stroke-linecap': 'round',
-    });
-    world.appendChild(line);
+    const id = `line_${elementIdCounter++}`;
+    const lineElement = new LineElement(id, x - 60, y - 20, x + 60, y + 20, world);
+    lineElement.render();
+    elementManager.addElement(lineElement);
 }
 
 function addTextAt(x, y) {
@@ -185,4 +267,23 @@ viewport.addEventListener('wheel', (e) => {
     offsetX = px - worldX * scale;
     offsetY = py - worldY * scale;
     updateTransforms();
+});
+
+// Element selection: left-click
+vectorLayer.addEventListener('click', (e) => {
+    if (dragOccurred) {
+        dragOccurred = false;
+        return;
+    }
+    let isElementClicked = false;
+    for (const element of elementManager.elements) {
+        if (e.target === element.svgElement || element.svgElement.contains(e.target)) {
+            isElementClicked = true;
+            break;
+        }
+    }
+    if (isElementClicked) {
+        e.preventDefault();
+    }
+    elementManager.handleClick(e, e.shiftKey);
 });
