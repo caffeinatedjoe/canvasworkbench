@@ -42,32 +42,17 @@ class RectangleElement extends InteractiveElement {
     if (origin) {
       const newWidth = this.width * this.scale;
       const newHeight = this.height * this.scale;
-      // The origin should remain at the same position
-      // For example, if origin is top-left of bbox, new x = origin.x, new y = origin.y
-      // But since position is center, center = origin + (newWidth/2, newHeight/2) depending on which corner
-      // Wait, for top-left origin, new center = origin + (newWidth/2, newHeight/2)
-      // But origin is the opposite corner, so for top-left handle, origin is bottom-right, so to keep bottom-right fixed, new center = origin - (newWidth/2, newHeight/2)
-      // Yes.
-      let offsetX = 0, offsetY = 0;
-      const bbox = this.getBoundingBox(); // but this uses current scale, wait no, getBoundingBox uses this.scale, but since we just set it, it's new.
-      // Wait, better to calculate based on original.
-      // Actually, since position is center, and origin is a point, the vector from center to origin should be scaled? No.
-      // To keep origin fixed, the new position = origin - vector from origin to center in new scale.
-      // For rectangle, center is at position, origin is say bottom-right, vector from origin to center is (-newWidth/2, -newHeight/2) for bottom-right origin.
-      // So new center = origin + (-newWidth/2, -newHeight/2) = origin - (newWidth/2, newHeight/2)
-      // Yes.
-      // But which corner is origin? For scaling from corner, origin is opposite.
-      // So, for example, if dragging top-left, origin is bottom-right, so to keep bottom-right fixed, new center = bottom-right - (newWidth/2, newHeight/2)
-      // Yes.
-      // But in code, origin is the opposite corner position.
-      this.position.x = origin.x - newWidth / 2;
-      this.position.y = origin.y - newHeight / 2;
-      // For top-left drag, origin is bottom-right, so center = bottom-right - (w/2, h/2), which is correct, top-left will be at bottom-right - (w, h), no.
-      // Bottom-right is at (center.x + w/2, center.y + h/2), to keep it fixed, new center = fixed - (newW/2, newH/2)
-      // Yes, and new top-left = new center - (newW/2, newH/2) = fixed - (newW/2, newH/2) - (newW/2, newH/2) = fixed - (newW, newH), but since scale >1, it's further, but actually for scaling up, the top-left moves left and up, yes.
-      // Yes, correct.
+      const dx = this.position.x - origin.x;
+      const dy = this.position.y - origin.y;
+      const dirX = dx === 0 ? 1 : Math.sign(dx);
+      const dirY = dy === 0 ? 1 : Math.sign(dy);
+      this.position.x = origin.x + dirX * (newWidth / 2);
+      this.position.y = origin.y + dirY * (newHeight / 2);
     }
     this.updateSvgPosition();
+    if (this.rotation !== 0) {
+      this.updateSvgRotation();
+    }
   }
 
   updateSvgRotation() {

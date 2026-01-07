@@ -58,6 +58,12 @@ let scaleCorner;
 let scaleOppositeCorner;
 let initialDistance;
 let initialScales = [];
+let initialGroupStates = [];
+let isRotating = false;
+let rotateCenter;
+let rotateStartAngle = 0;
+let initialRotationStates = [];
+let initialGroupRotation = 0;
 
 // Panning: middle-click drag, Dragging: left-click on selected elements, Scaling: left-click on scale handles
 viewport.addEventListener('mousedown', (e) => {
@@ -66,15 +72,73 @@ viewport.addEventListener('mousedown', (e) => {
         dragStartWorldX = worldPos.x;
         dragStartWorldY = worldPos.y;
         // Check if clicked on a scale handle
+        if (e.target.dataset && e.target.dataset.handleType === 'rotate') {
+            isRotating = true;
+            const bbox = elementManager.selectedElements.length === 1 ?
+                elementManager.selectedElements[0].getBoundingBox() :
+                elementManager.calculateBoundingBox();
+            rotateCenter = { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 };
+            rotateStartAngle = Math.atan2(worldPos.y - rotateCenter.y, worldPos.x - rotateCenter.x);
+            initialGroupRotation = elementManager.groupRotation || 0;
+            initialRotationStates = elementManager.selectedElements.map(el => {
+                const state = {
+                    element: el,
+                    position: { x: el.position.x, y: el.position.y },
+                    rotation: el.rotation
+                };
+                if (el.type === 'line') {
+                    state.x1 = el.x1;
+                    state.y1 = el.y1;
+                    state.x2 = el.x2;
+                    state.y2 = el.y2;
+                }
+                return state;
+            });
+            e.preventDefault();
+            return;
+        }
         if (e.target.dataset && e.target.dataset.handleType === 'scale') {
             isScaling = true;
             scaleCorner = e.target.dataset.corner;
             const bbox = elementManager.selectedElements.length === 1 ?
                 elementManager.selectedElements[0].getBoundingBox() :
                 elementManager.calculateBoundingBox();
-            scaleOppositeCorner = getOppositeCorner(scaleCorner, bbox);
+            const isGroup = elementManager.selectedElements.length > 1;
+            const rotationDeg = isGroup
+                ? (elementManager.groupRotation || 0)
+                : (elementManager.selectedElements[0].rotation || 0);
+            const rotationCenter = isGroup
+                ? (elementManager.groupRotationCenter || { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 })
+                : { x: elementManager.selectedElements[0].position.x, y: elementManager.selectedElements[0].position.y };
+            if (rotationDeg !== 0) {
+                const oppositeName = getOppositeCornerName(scaleCorner);
+                const oppositeCorner = getCornerPositions(bbox)[oppositeName];
+                scaleOppositeCorner = rotatePoint(
+                    oppositeCorner.x,
+                    oppositeCorner.y,
+                    rotationCenter.x,
+                    rotationCenter.y,
+                    rotationDeg * Math.PI / 180
+                );
+            } else {
+                scaleOppositeCorner = getOppositeCorner(scaleCorner, bbox);
+            }
             initialDistance = distance(worldPos, scaleOppositeCorner);
             initialScales = elementManager.selectedElements.map(el => el.scale);
+            initialGroupStates = elementManager.selectedElements.map(el => {
+                const state = {
+                    element: el,
+                    position: { x: el.position.x, y: el.position.y },
+                    scale: el.scale
+                };
+                if (el.type === 'line') {
+                    state.x1 = el.x1;
+                    state.y1 = el.y1;
+                    state.x2 = el.x2;
+                    state.y2 = el.y2;
+                }
+                return state;
+            });
             e.preventDefault();
             return;
         }
@@ -105,9 +169,55 @@ viewport.addEventListener('mousemove', (e) => {
         const currentWorld = clientToWorld(e.clientX, e.clientY);
         const currentDistance = distance(currentWorld, scaleOppositeCorner);
         const factor = currentDistance / initialDistance;
-        elementManager.selectedElements.forEach((element, i) => {
-            element.scale = initialScales[i] * factor;
-            element.updateSvgScale(scaleOppositeCorner);
+        initialGroupStates.forEach(state => {
+            const element = state.element;
+            if (element.type === 'line') {
+                element.x1 = scaleOppositeCorner.x + (state.x1 - scaleOppositeCorner.x) * factor;
+                element.y1 = scaleOppositeCorner.y + (state.y1 - scaleOppositeCorner.y) * factor;
+                element.x2 = scaleOppositeCorner.x + (state.x2 - scaleOppositeCorner.x) * factor;
+                element.y2 = scaleOppositeCorner.y + (state.y2 - scaleOppositeCorner.y) * factor;
+                element.position.x = (element.x1 + element.x2) / 2;
+                element.position.y = (element.y1 + element.y2) / 2;
+                element.updateSvgPosition();
+            } else {
+                element.scale = state.scale * factor;
+                element.position.x = scaleOppositeCorner.x + (state.position.x - scaleOppositeCorner.x) * factor;
+                element.position.y = scaleOppositeCorner.y + (state.position.y - scaleOppositeCorner.y) * factor;
+                element.updateSvgScale();
+            }
+        });
+        elementManager.updateHandles();
+        e.preventDefault();
+    } else if (isRotating) {
+        const currentWorld = clientToWorld(e.clientX, e.clientY);
+        const currentAngle = Math.atan2(currentWorld.y - rotateCenter.y, currentWorld.x - rotateCenter.x);
+        const deltaAngle = currentAngle - rotateStartAngle;
+        const deltaDeg = deltaAngle * 180 / Math.PI;
+        if (elementManager.selectedElements.length > 1) {
+            elementManager.groupRotation = initialGroupRotation + deltaDeg;
+            elementManager.groupRotationCenter = rotateCenter;
+        }
+        initialRotationStates.forEach(state => {
+            const element = state.element;
+            if (element.type === 'line') {
+                const p1 = rotatePoint(state.x1, state.y1, rotateCenter.x, rotateCenter.y, deltaAngle);
+                const p2 = rotatePoint(state.x2, state.y2, rotateCenter.x, rotateCenter.y, deltaAngle);
+                element.x1 = p1.x;
+                element.y1 = p1.y;
+                element.x2 = p2.x;
+                element.y2 = p2.y;
+                element.position.x = (element.x1 + element.x2) / 2;
+                element.position.y = (element.y1 + element.y2) / 2;
+                element.rotation = state.rotation + deltaDeg;
+                element.updateSvgPosition();
+            } else {
+                const pos = rotatePoint(state.position.x, state.position.y, rotateCenter.x, rotateCenter.y, deltaAngle);
+                element.position.x = pos.x;
+                element.position.y = pos.y;
+                element.rotation = state.rotation + deltaDeg;
+                element.updateSvgPosition();
+                element.updateSvgRotation();
+            }
         });
         elementManager.updateHandles();
         e.preventDefault();
@@ -137,6 +247,10 @@ viewport.addEventListener('mousemove', (e) => {
 viewport.addEventListener('mouseup', () => {
     if (isScaling) {
         isScaling = false;
+        elementManager.updateHandles();
+    }
+    if (isRotating) {
+        isRotating = false;
         elementManager.updateHandles();
     }
     if (isDragging) {
@@ -176,8 +290,46 @@ function getOppositeCorner(corner, bbox) {
     }
 }
 
+function getOppositeCornerName(corner) {
+    switch (corner) {
+        case 'top-left': return 'bottom-right';
+        case 'top-right': return 'bottom-left';
+        case 'bottom-right': return 'top-left';
+        case 'bottom-left': return 'top-right';
+        case 'top': return 'bottom';
+        case 'right': return 'left';
+        case 'bottom': return 'top';
+        case 'left': return 'right';
+        default: return corner;
+    }
+}
+
+function getCornerPositions(bbox) {
+    return {
+        'top-left': { x: bbox.x, y: bbox.y },
+        'top-right': { x: bbox.x + bbox.width, y: bbox.y },
+        'bottom-right': { x: bbox.x + bbox.width, y: bbox.y + bbox.height },
+        'bottom-left': { x: bbox.x, y: bbox.y + bbox.height },
+        top: { x: bbox.x + bbox.width / 2, y: bbox.y },
+        right: { x: bbox.x + bbox.width, y: bbox.y + bbox.height / 2 },
+        bottom: { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height },
+        left: { x: bbox.x, y: bbox.y + bbox.height / 2 }
+    };
+}
+
 function distance(p1, p2) {
     return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+}
+
+function rotatePoint(px, py, cx, cy, angle) {
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const dx = px - cx;
+    const dy = py - cy;
+    return {
+        x: cx + dx * cos - dy * sin,
+        y: cy + dx * sin + dy * cos
+    };
 }
 
 function createSvgEl(tag, attrs = {}) {

@@ -120,6 +120,7 @@ class LineElement extends InteractiveElement {
     rotateHandle.setAttribute('fill', 'white');
     rotateHandle.setAttribute('stroke', 'blue');
     rotateHandle.setAttribute('stroke-width', 1);
+    rotateHandle.setAttribute('data-handle-type', 'rotate');
     this.container.appendChild(rotateHandle);
     this.handles.push(rotateHandle);
   }

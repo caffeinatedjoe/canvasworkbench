@@ -61,6 +61,9 @@ class CircleElement extends InteractiveElement {
       }
     }
     this.updateSvgPosition();
+    if (this.rotation !== 0) {
+      this.updateSvgRotation();
+    }
   }
 
   updateSvgRotation() {
@@ -116,7 +119,10 @@ class CircleElement extends InteractiveElement {
     rotateHandle.setAttribute('fill', 'white');
     rotateHandle.setAttribute('stroke', 'blue');
     rotateHandle.setAttribute('stroke-width', 1);
+    rotateHandle.setAttribute('data-handle-type', 'rotate');
     this.container.appendChild(rotateHandle);
     this.handles.push(rotateHandle);
+
+    this.applyHandleRotation(this.position.x, this.position.y);
   }
 }

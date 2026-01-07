@@ -28,6 +28,9 @@ class InteractiveElement {
     this.position.y += deltaY;
     // Subclasses should override to update svgElement attributes
     this.updateSvgPosition();
+    if (this.rotation !== 0) {
+      this.updateSvgRotation();
+    }
   }
 
   scale(factor, origin) {
@@ -101,15 +104,25 @@ class InteractiveElement {
     rotateHandle.setAttribute('fill', 'white');
     rotateHandle.setAttribute('stroke', 'blue');
     rotateHandle.setAttribute('stroke-width', 1);
+    rotateHandle.setAttribute('data-handle-type', 'rotate');
     this.container.appendChild(rotateHandle);
     this.handles.push(rotateHandle);
 
     // For lines, add endpoint handles in subclass
+
+    this.applyHandleRotation(bbox.x + bbox.width / 2, bbox.y + bbox.height / 2);
   }
 
   removeHandles() {
     this.handles.forEach(handle => handle.remove());
     this.handles = [];
+  }
+
+  applyHandleRotation(centerX, centerY) {
+    if (this.rotation === 0) return;
+    this.handles.forEach(handle => {
+      handle.setAttribute('transform', `rotate(${this.rotation} ${centerX} ${centerY})`);
+    });
   }
 
   getBoundingBox() {

@@ -3,6 +3,8 @@ class ElementManager {
         this.elements = [];
         this.selectedElements = [];
         this.groupHandles = [];
+        this.groupRotation = 0;
+        this.groupRotationCenter = null;
     }
 
     addElement(element) {
@@ -28,6 +30,8 @@ class ElementManager {
             this.selectedElements.push(element);
             element.select();
         }
+        this.groupRotation = 0;
+        this.groupRotationCenter = null;
         this.updateHandles();
     }
 
@@ -36,6 +40,8 @@ class ElementManager {
         if (index > -1) {
             this.selectedElements.splice(index, 1);
             element.deselect();
+            this.groupRotation = 0;
+            this.groupRotationCenter = null;
             this.updateHandles();
         }
     }
@@ -45,6 +51,8 @@ class ElementManager {
         this.removeGroupHandles();
         this.selectedElements.forEach(element => element.deselect());
         this.selectedElements = [];
+        this.groupRotation = 0;
+        this.groupRotationCenter = null;
     }
 
     getSelected() {
@@ -83,7 +91,8 @@ class ElementManager {
         // Calculate min bounding box for selected elements
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         this.selectedElements.forEach(element => {
-            const bbox = element.svgElement.getBBox();
+            const bbox = element.getBoundingBox();
+            if (!bbox) return;
             minX = Math.min(minX, bbox.x);
             minY = Math.min(minY, bbox.y);
             maxX = Math.max(maxX, bbox.x + bbox.width);
@@ -102,6 +111,8 @@ class ElementManager {
         } else {
             this.removeIndividualHandles();
             this.removeGroupHandles();
+            this.groupRotation = 0;
+            this.groupRotationCenter = null;
         }
     }
 
@@ -164,7 +175,18 @@ class ElementManager {
         rotateHandle.setAttribute('fill', 'white');
         rotateHandle.setAttribute('stroke', 'blue');
         rotateHandle.setAttribute('stroke-width', 1);
+        rotateHandle.setAttribute('data-handle-type', 'rotate');
         this.elements[0].container.appendChild(rotateHandle);
         this.groupHandles.push(rotateHandle);
+
+        if (this.groupRotation !== 0) {
+            const center = this.groupRotationCenter || {
+                x: bbox.x + bbox.width / 2,
+                y: bbox.y + bbox.height / 2
+            };
+            this.groupHandles.forEach(handle => {
+                handle.setAttribute('transform', `rotate(${this.groupRotation} ${center.x} ${center.y})`);
+            });
+        }
     }
 }
