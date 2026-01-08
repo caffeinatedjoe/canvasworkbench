@@ -43,6 +43,9 @@ class TransformController {
 
     onMouseDown(e) {
         if (e.button !== 0) return;
+        if (e.target && e.target.dataset && e.target.dataset.connectorType) {
+            return;
+        }
         const worldPos = this.camera.clientToWorld(e.clientX, e.clientY);
         this.dragStartWorldX = worldPos.x;
         this.dragStartWorldY = worldPos.y;
@@ -136,7 +139,8 @@ class TransformController {
             const singleElement = this.elementManager.selectedElements.length === 1
                 ? this.elementManager.selectedElements[0]
                 : null;
-            this.isNonUniformRectScale = !!singleElement && singleElement.type === 'rectangle';
+            this.isNonUniformRectScale = !!singleElement
+                && (singleElement.type === 'rectangle' || singleElement.type === 'node');
             if (this.isNonUniformRectScale) {
                 const cornerPositions = getCornerPositions(bbox);
                 const handleCorner = cornerPositions[this.scaleCorner];

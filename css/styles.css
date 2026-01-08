@@ -58,3 +58,29 @@ body {
     stroke-dasharray: 4, 2;
     pointer-events: none;
 }
+
+.node-rect {
+    filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.15));
+}
+
+.node-connector {
+    cursor: crosshair;
+}
+
+.connection-line {
+    fill: none;
+    stroke: rgba(46, 204, 113, 0.9);
+    stroke-width: 3;
+    pointer-events: stroke;
+}
+
+.connection-line-selected {
+    stroke: rgba(241, 196, 15, 0.95);
+    stroke-width: 4;
+}
+
+.connection-line-preview {
+    stroke-dasharray: 6, 4;
+    opacity: 0.7;
+    pointer-events: none;
+}
