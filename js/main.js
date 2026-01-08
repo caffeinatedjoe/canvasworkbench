@@ -24,6 +24,11 @@ const elementManager = new ElementManager();
 const interactionState = { dragOccurred: false };
 let elementIdCounter = 0;
 let lastCursorWorld = { x: 0, y: 0 };
+const FLOW_CHANGE_EVENT = 'nodeflow:changed';
+
+function dispatchFlowChange() {
+    document.dispatchEvent(new CustomEvent(FLOW_CHANGE_EVENT));
+}
 
 window.addEventListener('resize', () => camera.resize());
 viewport.addEventListener('mousemove', (e) => {
@@ -66,6 +71,7 @@ function addNodeAt(x, y) {
     });
     nodeElement.render();
     elementManager.addElement(nodeElement);
+    dispatchFlowChange();
 }
 
 function createElementFromDescriptor(descriptor) {
@@ -132,7 +138,8 @@ function createElementFromDescriptor(descriptor) {
         const nodeElement = new NodeElement(id, x, y, descriptor.width, descriptor.height, world, {
             inputCount: descriptor.inputCount,
             outputCount: descriptor.outputCount,
-            cornerRadius: descriptor.cornerRadius
+            cornerRadius: descriptor.cornerRadius,
+            textValue: descriptor.textValue
         });
         nodeElement.render();
         nodeElement.scale = descriptor.scale;
@@ -187,3 +194,92 @@ document.addEventListener('keydown', (e) => elementManager.handleKeyDown(e, {
     createElementFromDescriptor,
     cursorWorld: lastCursorWorld
 }));
+
+const scheduleFlowRun = (() => {
+    let frame = null;
+    return () => {
+        if (frame !== null) return;
+        frame = window.requestAnimationFrame(() => {
+            frame = null;
+            logFlowsFromOrigins();
+        });
+    };
+})();
+
+document.addEventListener(FLOW_CHANGE_EVENT, scheduleFlowRun);
+
+function buildNodeAdjacency() {
+    const nodes = elementManager.elements.filter(element => element.type === 'node');
+    const adjacency = new Map(nodes.map(node => [node.id, []]));
+    const inDegree = new Map(nodes.map(node => [node.id, 0]));
+    elementManager.elements.forEach(element => {
+        if (element.type !== 'connection' || !element.fromNode || !element.toNode) return;
+        if (!adjacency.has(element.fromNode.id)) {
+            adjacency.set(element.fromNode.id, []);
+        }
+        adjacency.get(element.fromNode.id).push(element.toNode);
+        inDegree.set(element.toNode.id, (inDegree.get(element.toNode.id) ?? 0) + 1);
+    });
+    return { nodes, adjacency, inDegree };
+}
+
+function formatNodeText(node) {
+    const text = node.getTextValue ? node.getTextValue() : '';
+    return text.replace(/\s+/g, ' ').trim();
+}
+
+function collectFlows(startNode, adjacency) {
+    const flows = [];
+    const walk = (node, path, visited) => {
+        const nextNodes = adjacency.get(node.id) || [];
+        if (nextNodes.length === 0) {
+            flows.push(path.slice());
+            return;
+        }
+        nextNodes.forEach(nextNode => {
+            if (visited.has(nextNode.id)) {
+                const cyclePath = path.concat('cycle');
+                flows.push(cyclePath);
+                return;
+            }
+            visited.add(nextNode.id);
+            path.push(formatNodeText(nextNode));
+            walk(nextNode, path, visited);
+            path.pop();
+            visited.delete(nextNode.id);
+        });
+    };
+    walk(startNode, [formatNodeText(startNode)], new Set([startNode.id]));
+    return flows;
+}
+
+function logFlowsFromOrigins() {
+    const { nodes, adjacency, inDegree } = buildNodeAdjacency();
+    if (nodes.length === 0) {
+        console.log('No nodes available to traverse.');
+        return;
+    }
+    const origins = nodes.filter(node => (inDegree.get(node.id) ?? 0) === 0);
+    const roots = origins.length > 0 ? origins : nodes;
+    roots.forEach(node => {
+        const flows = collectFlows(node, adjacency);
+        if (flows.length === 0) {
+            const text = formatNodeText(node);
+            console.log(`[flow] ${text}`);
+            return;
+        }
+        flows.forEach(flow => {
+            const text = flow.filter(Boolean).join(' ').trim();
+            console.log(`[flow] ${text}`);
+        });
+    });
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const tagName = e.target && e.target.tagName ? e.target.tagName.toLowerCase() : '';
+    if (tagName === 'input' || tagName === 'textarea') return;
+    if (e.key.toLowerCase() === 'f') {
+        logFlowsFromOrigins();
+    }
+});

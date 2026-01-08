@@ -27,6 +27,24 @@ class NodeElement extends InteractiveElement {
         this.rectElement.setAttribute('ry', this.cornerRadius);
         this.svgElement.appendChild(this.rectElement);
 
+        this.textContainer = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+        this.textContainer.classList.add('node-text-container');
+        this.textInput = document.createElementNS('http://www.w3.org/1999/xhtml', 'input');
+        this.textInput.type = 'text';
+        this.textInput.classList.add('node-text-input');
+        this.textInput.value = options.textValue ?? '';
+        this.textInput.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+        });
+        this.textInput.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+        this.textInput.addEventListener('input', () => {
+            document.dispatchEvent(new CustomEvent('nodeflow:changed'));
+        });
+        this.textContainer.appendChild(this.textInput);
+        this.svgElement.appendChild(this.textContainer);
+
         this.inputConnectors = this.createConnectors('input', this.inputCount);
         this.outputConnectors = this.createConnectors('output', this.outputCount);
     }
@@ -137,6 +155,13 @@ class NodeElement extends InteractiveElement {
         this.rectElement.setAttribute('y', bbox.y);
         this.rectElement.setAttribute('width', bbox.width);
         this.rectElement.setAttribute('height', bbox.height);
+        const padding = 8 * this.scale;
+        const textWidth = Math.max(0, bbox.width - padding * 2);
+        const textHeight = Math.max(0, bbox.height - padding * 2);
+        this.textContainer.setAttribute('x', bbox.x + padding);
+        this.textContainer.setAttribute('y', bbox.y + padding);
+        this.textContainer.setAttribute('width', textWidth);
+        this.textContainer.setAttribute('height', textHeight);
         this.updateConnectorPositions();
         this.updateConnections();
     }
@@ -172,6 +197,16 @@ class NodeElement extends InteractiveElement {
         const connections = this.connections.slice();
         connections.forEach(connection => connection.destroy());
         super.delete();
+    }
+
+    getTextValue() {
+        return this.textInput ? this.textInput.value : '';
+    }
+
+    setTextValue(value) {
+        if (this.textInput) {
+            this.textInput.value = value ?? '';
+        }
     }
 }
 

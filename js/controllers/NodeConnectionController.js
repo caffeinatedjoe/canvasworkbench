@@ -122,6 +122,7 @@ class NodeConnectionController {
         );
         connection.render();
         this.elementManager.addElement(connection);
+        document.dispatchEvent(new CustomEvent('nodeflow:changed'));
     }
 
     cleanupPreview() {

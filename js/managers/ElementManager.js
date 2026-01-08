@@ -111,7 +111,7 @@ class ElementManager {
             return;
         }
 
-        if (event.key === 'Delete' && this.selectedElements.length > 0) {
+        if ((key === 'delete' || key === 'backspace') && this.selectedElements.length > 0) {
             const selected = this.selectedElements.slice();
             this.selectedElements = [];
             this.removeIndividualHandles();
@@ -120,6 +120,8 @@ class ElementManager {
                 element.delete();
                 this.removeElement(element);
             });
+            document.dispatchEvent(new CustomEvent('nodeflow:changed'));
+            event.preventDefault();
         }
     }
 
@@ -166,6 +168,7 @@ class ElementManager {
 
         if (pastedElements.length > 0) {
             this.setSelection(pastedElements);
+            document.dispatchEvent(new CustomEvent('nodeflow:changed'));
         }
 
         return pastedElements;
@@ -314,7 +317,8 @@ class ElementManager {
                 height: element.height,
                 inputCount: element.inputCount,
                 outputCount: element.outputCount,
-                cornerRadius: element.cornerRadius
+                cornerRadius: element.cornerRadius,
+                textValue: typeof element.getTextValue === 'function' ? element.getTextValue() : ''
             };
         }
 
