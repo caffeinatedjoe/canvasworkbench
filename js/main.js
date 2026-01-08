@@ -117,8 +117,8 @@ function logFlowsFromOrigins() {
         return;
     }
     const origins = nodes.filter(node => (inDegree.get(node.id) ?? 0) === 0);
-    const roots = origins.length > 0 ? origins : nodes;
-    roots.forEach(node => {
+    const visited = new Set();
+    const logFromNode = (node) => {
         const flows = collectFlows(node, adjacency);
         if (flows.length === 0) {
             const text = formatNodeText(node);
@@ -129,6 +129,26 @@ function logFlowsFromOrigins() {
             const text = flow.filter(Boolean).join(' ').trim();
             console.log(`[flow] ${text}`);
         });
+    };
+    const markReachable = (start) => {
+        const stack = [start];
+        while (stack.length > 0) {
+            const current = stack.pop();
+            if (!current || visited.has(current.id)) continue;
+            visited.add(current.id);
+            const nextNodes = adjacency.get(current.id) || [];
+            nextNodes.forEach(nextNode => stack.push(nextNode));
+        }
+    };
+    const roots = origins.length > 0 ? origins : nodes;
+    roots.forEach(node => {
+        logFromNode(node);
+        markReachable(node);
+    });
+    nodes.forEach(node => {
+        if (visited.has(node.id)) return;
+        logFromNode(node);
+        markReachable(node);
     });
 }
 
