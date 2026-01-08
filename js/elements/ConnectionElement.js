@@ -29,10 +29,15 @@ class ConnectionElement extends InteractiveElement {
     update() {
         const start = this.fromNode.getConnectorWorldPosition('output', this.fromIndex);
         const end = this.toNode.getConnectorWorldPosition('input', this.toIndex);
-        const dx = Math.max(40, Math.abs(end.x - start.x) * 0.4);
-        const c1x = start.x + dx;
-        const c2x = end.x - dx;
-        const d = `M ${start.x} ${start.y} C ${c1x} ${start.y} ${c2x} ${end.y} ${end.x} ${end.y}`;
+        const startNormal = this.fromNode.getConnectorNormalWorld('output');
+        const endNormal = this.toNode.getConnectorNormalWorld('input');
+        const distance = Math.hypot(end.x - start.x, end.y - start.y);
+        const handleLength = Math.max(40, distance * 0.35);
+        const c1x = start.x + startNormal.x * handleLength;
+        const c1y = start.y + startNormal.y * handleLength;
+        const c2x = end.x + endNormal.x * handleLength;
+        const c2y = end.y + endNormal.y * handleLength;
+        const d = `M ${start.x} ${start.y} C ${c1x} ${c1y} ${c2x} ${c2y} ${end.x} ${end.y}`;
         this.svgElement.setAttribute('d', d);
         this.position.x = (start.x + end.x) / 2;
         this.position.y = (start.y + end.y) / 2;

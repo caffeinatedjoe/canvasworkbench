@@ -97,10 +97,18 @@ class NodeConnectionController {
         if (!this.previewLine) return;
         const start = this.startNode.getConnectorWorldPosition(this.startType, this.startIndex);
         const end = this.camera.clientToWorld(clientX, clientY);
-        const dx = Math.max(40, Math.abs(end.x - start.x) * 0.4);
-        const c1x = start.x + (this.startType === 'output' ? dx : -dx);
-        const c2x = end.x + (this.startType === 'output' ? -dx : dx);
-        const d = `M ${start.x} ${start.y} C ${c1x} ${start.y} ${c2x} ${end.y} ${end.x} ${end.y}`;
+        const startNormal = this.startNode.getConnectorNormalWorld(this.startType);
+        const distance = Math.hypot(end.x - start.x, end.y - start.y);
+        const handleLength = Math.max(40, distance * 0.35);
+        const toStartX = start.x - end.x;
+        const toStartY = start.y - end.y;
+        const toStartLen = Math.hypot(toStartX, toStartY) || 1;
+        const endNormal = { x: toStartX / toStartLen, y: toStartY / toStartLen };
+        const c1x = start.x + startNormal.x * handleLength;
+        const c1y = start.y + startNormal.y * handleLength;
+        const c2x = end.x + endNormal.x * handleLength;
+        const c2y = end.y + endNormal.y * handleLength;
+        const d = `M ${start.x} ${start.y} C ${c1x} ${c1y} ${c2x} ${c2y} ${end.x} ${end.y}`;
         this.previewLine.setAttribute('d', d);
     }
 

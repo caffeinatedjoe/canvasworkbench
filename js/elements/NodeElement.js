@@ -109,6 +109,20 @@ class NodeElement extends InteractiveElement {
         return rotatePoint(base.x, base.y, this.position.x, this.position.y, rad);
     }
 
+    getConnectorNormalWorld(type) {
+        const normal = type === 'input' ? { x: -1, y: 0 } : { x: 1, y: 0 };
+        if (!this.rotation) {
+            return normal;
+        }
+        const rad = this.rotation * Math.PI / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+        return {
+            x: normal.x * cos - normal.y * sin,
+            y: normal.x * sin + normal.y * cos
+        };
+    }
+
     getConnectorBasePositions() {
         const halfW = (this.width * this.scale) / 2;
         const halfH = (this.height * this.scale) / 2;
