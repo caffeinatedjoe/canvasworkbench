@@ -1,6 +1,6 @@
 class PanningController {
-    constructor({ viewport, camera, menu }) {
-        this.viewport = viewport;
+    constructor({ pointer, camera, menu }) {
+        this.pointer = pointer;
         this.camera = camera;
         this.menu = menu;
         this.isPanning = false;
@@ -10,9 +10,9 @@ class PanningController {
     }
 
     bindEvents() {
-        this.viewport.addEventListener('mousedown', (e) => this.onMouseDown(e));
-        this.viewport.addEventListener('mousemove', (e) => this.onMouseMove(e));
-        this.viewport.addEventListener('mouseup', () => this.onMouseUp());
+        this.pointer.on('mousedown', (e) => this.onMouseDown(e));
+        this.pointer.on('mousemove', (e) => this.onMouseMove(e));
+        this.pointer.on('mouseup', () => this.onMouseUp());
     }
 
     onMouseDown(e) {

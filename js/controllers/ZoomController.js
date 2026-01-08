@@ -1,13 +1,13 @@
 class ZoomController {
-    constructor({ viewport, camera, menu }) {
-        this.viewport = viewport;
+    constructor({ pointer, camera, menu }) {
+        this.pointer = pointer;
         this.camera = camera;
         this.menu = menu;
         this.bindEvents();
     }
 
     bindEvents() {
-        this.viewport.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
+        this.pointer.on('wheel', (e) => this.onWheel(e), { passive: false });
     }
 
     onWheel(e) {

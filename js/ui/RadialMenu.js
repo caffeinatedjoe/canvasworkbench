@@ -224,10 +224,18 @@ class RadialMenu {
         return this.config.innerDiameter / 2;
     }
 
+    getContainer() {
+        return this.config.container;
+    }
+
     updateConfig(newConfig) {
         this.config = { ...this.config, ...newConfig };
         const newSvg = this.generateSVG();
         this.menuElement.replaceChild(newSvg, this.menuElement.querySelector('svg'));
+    }
+
+    setSections(sections) {
+        this.updateConfig({ sections });
     }
 
     destroy() {

@@ -1,8 +1,9 @@
 class MarqueeSelectionController {
-    constructor({ viewport, world, elementManager, camera, interactionState }) {
-        this.viewport = viewport;
+    constructor({ pointer, world, elementRegistry, selectionService, camera, interactionState }) {
+        this.pointer = pointer;
         this.world = world;
-        this.elementManager = elementManager;
+        this.elementRegistry = elementRegistry;
+        this.selectionService = selectionService;
         this.camera = camera;
         this.interactionState = interactionState;
         this.isSelecting = false;
@@ -20,7 +21,7 @@ class MarqueeSelectionController {
     }
 
     bindEvents() {
-        this.viewport.addEventListener('mousedown', (e) => this.onMouseDown(e));
+        this.pointer.on('mousedown', (e) => this.onMouseDown(e));
     }
 
     onMouseDown(e) {
@@ -31,7 +32,7 @@ class MarqueeSelectionController {
         this.startWorld = this.camera.clientToWorld(e.clientX, e.clientY);
         this.currentWorld = { ...this.startWorld };
         this.isAdditive = e.shiftKey;
-        this.baseSelection = e.shiftKey ? [...this.elementManager.selectedElements] : [];
+        this.baseSelection = e.shiftKey ? [...this.selectionService.getSelected()] : [];
         window.addEventListener('mousemove', this.onMouseMove);
         window.addEventListener('mouseup', this.onMouseUp);
     }
@@ -76,7 +77,7 @@ class MarqueeSelectionController {
     }
 
     isElementTarget(target) {
-        return this.elementManager.elements.some(element => (
+        return this.elementRegistry.getAll().some(element => (
             target === element.svgElement || element.svgElement.contains(target)
         ));
     }
@@ -113,15 +114,15 @@ class MarqueeSelectionController {
     updateSelection() {
         if (!this.startWorld || !this.currentWorld) return;
         const rect = this.getRectFromPoints(this.startWorld, this.currentWorld);
-        const inRect = this.elementManager.elements.filter(element => (
+        const inRect = this.elementRegistry.getAll().filter(element => (
             this.isElementInRect(element, rect)
         ));
         if (this.isAdditive) {
             const merged = new Set([...this.baseSelection, ...inRect]);
-            this.elementManager.setSelection(Array.from(merged));
+            this.selectionService.setSelection(Array.from(merged));
             return;
         }
-        this.elementManager.setSelection(inRect);
+        this.selectionService.setSelection(inRect);
     }
 
     getRectFromPoints(a, b) {
@@ -133,7 +134,7 @@ class MarqueeSelectionController {
     }
 
     isElementInRect(element, rect) {
-        const bbox = this.elementManager.getElementBoundingBox(element);
+        const bbox = this.selectionService.getElementBoundingBox(element);
         if (!bbox) return false;
         const rectRight = rect.x + rect.width;
         const rectBottom = rect.y + rect.height;

@@ -1,9 +1,12 @@
 class MenuController {
-    constructor({ viewport, camera, menu, onContext }) {
-        this.viewport = viewport;
+    constructor({ pointer, camera, menu, onContext, overlayContainer }) {
+        this.pointer = pointer;
         this.camera = camera;
         this.menu = menu;
         this.onContext = onContext;
+        this.overlayContainer = overlayContainer || (menu && typeof menu.getContainer === 'function'
+            ? menu.getContainer()
+            : document.body);
         this.isTracking = false;
         this.activeSectionId = null;
         this.lineOverlay = null;
@@ -17,9 +20,8 @@ class MenuController {
     }
 
     bindEvents() {
-        this.viewport.addEventListener('contextmenu', (e) => e.preventDefault());
-        document.addEventListener('contextmenu', (e) => e.preventDefault());
-        this.viewport.addEventListener('mousedown', (e) => this.onMouseDown(e));
+        this.pointer.on('contextmenu', (e) => e.preventDefault());
+        this.pointer.on('mousedown', (e) => this.onMouseDown(e));
     }
 
     onMouseDown(e) {
@@ -96,7 +98,7 @@ class MenuController {
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         line.classList.add('radial-menu-line');
         overlay.appendChild(line);
-        document.body.appendChild(overlay);
+        this.overlayContainer.appendChild(overlay);
         this.lineOverlay = overlay;
         this.lineElement = line;
         this.updateLineOverlaySize();

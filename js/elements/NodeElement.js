@@ -16,6 +16,7 @@ class NodeElement extends InteractiveElement {
         this.addButtonOffset = options.addButtonOffset ?? 12;
         this.hoverPadExtra = options.hoverPadExtra ?? (this.addButtonOffset + this.addButtonRadius + 4);
         this.connections = [];
+        this.onChange = typeof options.onChange === 'function' ? options.onChange : null;
 
         this.svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         this.svgElement.setAttribute('data-element-id', this.id);
@@ -47,7 +48,7 @@ class NodeElement extends InteractiveElement {
             e.stopPropagation();
         });
         this.textInput.addEventListener('input', () => {
-            document.dispatchEvent(new CustomEvent('nodeflow:changed'));
+            this.notifyChange();
         });
         this.textContainer.appendChild(this.textInput);
         this.svgElement.appendChild(this.textContainer);
@@ -118,7 +119,7 @@ class NodeElement extends InteractiveElement {
             e.preventDefault();
             e.stopPropagation();
             this.addConnector(type);
-            document.dispatchEvent(new CustomEvent('nodeflow:changed'));
+            this.notifyChange();
         });
 
         this.svgElement.appendChild(group);
@@ -209,6 +210,14 @@ class NodeElement extends InteractiveElement {
 
     updateConnections() {
         this.connections.forEach(connection => connection.update());
+    }
+
+    notifyChange() {
+        if (this.onChange) {
+            this.onChange();
+            return;
+        }
+        document.dispatchEvent(new CustomEvent('nodeflow:changed'));
     }
 
     getBoundingBox() {

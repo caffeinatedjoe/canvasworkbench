@@ -1,17 +1,18 @@
 class SelectionController {
-    constructor({ vectorLayer, elementManager, interactionState }) {
-        this.vectorLayer = vectorLayer;
-        this.elementManager = elementManager;
+    constructor({ pointer, elementRegistry, selectionService, interactionState }) {
+        this.pointer = pointer;
+        this.elementRegistry = elementRegistry;
+        this.selectionService = selectionService;
         this.interactionState = interactionState;
         this.bindEvents();
     }
 
     bindEvents() {
-        this.vectorLayer.addEventListener('click', (e) => this.onClick(e));
+        this.pointer.on('click', (e) => this.onClick(e));
     }
 
     onClick(e) {
-        const isElementClicked = this.elementManager.elements.some(element => (
+        const isElementClicked = this.elementRegistry.getAll().some(element => (
             element.isHitTarget && element.isHitTarget(e.target)
         ));
         const isHandleClicked = !!(e.target && e.target.dataset && e.target.dataset.handleType);
@@ -25,7 +26,7 @@ class SelectionController {
             e.preventDefault();
             return;
         }
-        this.elementManager.handleClick(e, e.shiftKey);
+        this.selectionService.handleClick(e, e.shiftKey);
     }
 }
 

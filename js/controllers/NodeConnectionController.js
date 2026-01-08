@@ -1,11 +1,13 @@
 import ConnectionElement from '../elements/ConnectionElement.js';
 
 class NodeConnectionController {
-    constructor({ viewport, world, camera, elementManager }) {
-        this.viewport = viewport;
+    constructor({ pointer, world, camera, elementRegistry, selectionService, onChange }) {
+        this.pointer = pointer;
         this.world = world;
         this.camera = camera;
-        this.elementManager = elementManager;
+        this.elementRegistry = elementRegistry;
+        this.selectionService = selectionService;
+        this.onChange = onChange;
         this.isConnecting = false;
         this.pendingConnector = null;
         this.startNode = null;
@@ -22,7 +24,7 @@ class NodeConnectionController {
     }
 
     bindEvents() {
-        this.viewport.addEventListener('mousedown', (e) => this.handleMouseDown(e), true);
+        this.pointer.on('mousedown', (e) => this.handleMouseDown(e), true);
         document.addEventListener('keydown', this.onKeyDown);
     }
 
@@ -32,7 +34,7 @@ class NodeConnectionController {
             this.clearSelectedConnector();
             return;
         }
-        const node = this.elementManager.getElementById(connector.nodeId);
+        const node = this.elementRegistry.getById(connector.nodeId);
         if (!node || node.type !== 'node') return;
 
         const isSelected = this.isConnectorSelected(connector);
@@ -94,7 +96,7 @@ class NodeConnectionController {
 
         const endConnector = this.getConnectorFromEventTarget(e.target);
         if (endConnector) {
-            const endNode = this.elementManager.getElementById(endConnector.nodeId);
+            const endNode = this.elementRegistry.getById(endConnector.nodeId);
             if (endNode && endNode.type === 'node' && endNode !== this.startNode) {
                 this.createConnection(endNode, endConnector);
             }
@@ -148,7 +150,7 @@ class NodeConnectionController {
         const element = node.getConnectorElement(type, index);
         if (!element) return;
         this.clearSelectedConnector();
-        this.elementManager.deselectAll();
+        this.selectionService.deselectAll();
         element.classList.add('node-connector-selected');
         this.selectedConnector = { node, type, index, element };
     }
@@ -179,10 +181,12 @@ class NodeConnectionController {
         const removedConnections = node.removeConnector(type, index);
         removedConnections.forEach(connection => {
             connection.destroy();
-            this.elementManager.removeElement(connection);
+            this.elementRegistry.remove(connection);
         });
         this.clearSelectedConnector();
-        document.dispatchEvent(new CustomEvent('nodeflow:changed'));
+        if (this.onChange) {
+            this.onChange();
+        }
         e.preventDefault();
         if (typeof e.stopImmediatePropagation === 'function') {
             e.stopImmediatePropagation();
@@ -208,8 +212,10 @@ class NodeConnectionController {
             this.world
         );
         connection.render();
-        this.elementManager.addElement(connection);
-        document.dispatchEvent(new CustomEvent('nodeflow:changed'));
+        this.elementRegistry.add(connection);
+        if (this.onChange) {
+            this.onChange();
+        }
     }
 
     cleanupPreview() {

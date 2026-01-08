@@ -7,11 +7,11 @@ import {
 } from '../core/geometry.js';
 
 class TransformController {
-    constructor({ viewport, elementManager, camera, menu, interactionState }) {
-        this.viewport = viewport;
-        this.elementManager = elementManager;
+    constructor({ pointer, elementRegistry, selectionService, camera, interactionState }) {
+        this.pointer = pointer;
+        this.elementRegistry = elementRegistry;
+        this.selectionService = selectionService;
         this.camera = camera;
-        this.menu = menu;
         this.interactionState = interactionState;
 
         this.isDragging = false;
@@ -38,9 +38,9 @@ class TransformController {
     }
 
     bindEvents() {
-        this.viewport.addEventListener('mousedown', (e) => this.onMouseDown(e));
-        this.viewport.addEventListener('mousemove', (e) => this.onMouseMove(e));
-        this.viewport.addEventListener('mouseup', () => this.onMouseUp());
+        this.pointer.on('mousedown', (e) => this.onMouseDown(e));
+        this.pointer.on('mousemove', (e) => this.onMouseMove(e));
+        this.pointer.on('mouseup', () => this.onMouseUp());
     }
 
     onMouseDown(e) {
@@ -54,16 +54,17 @@ class TransformController {
 
         if (e.target.dataset && e.target.dataset.handleType === 'rotate') {
             this.isRotating = true;
-            const bbox = this.elementManager.selectedElements.length === 1
-                ? this.elementManager.selectedElements[0].getBoundingBox()
-                : this.elementManager.calculateBoundingBox();
+            const selected = this.selectionService.getSelected();
+            const bbox = selected.length === 1
+                ? selected[0].getBoundingBox()
+                : this.selectionService.calculateBoundingBox();
             this.rotateCenter = {
                 x: bbox.x + bbox.width / 2,
                 y: bbox.y + bbox.height / 2
             };
             this.rotateStartAngle = Math.atan2(worldPos.y - this.rotateCenter.y, worldPos.x - this.rotateCenter.x);
-            this.initialGroupRotation = this.elementManager.groupRotation || 0;
-            this.initialRotationStates = this.elementManager.selectedElements.map(el => {
+            this.initialGroupRotation = this.selectionService.groupRotation || 0;
+            this.initialRotationStates = selected.map(el => {
                 const state = {
                     element: el,
                     position: { x: el.position.x, y: el.position.y },
@@ -82,7 +83,7 @@ class TransformController {
         }
 
         if (e.target.dataset && e.target.dataset.handleType === 'bezier-control') {
-            const element = this.elementManager.selectedElements[0];
+            const element = this.selectionService.getSelected()[0];
             if (element && element.type === 'connection') {
                 this.isBezierDragging = true;
                 this.bezierDragState = {
@@ -95,7 +96,7 @@ class TransformController {
         }
 
         if (e.target.dataset && e.target.dataset.handleType === 'line-endpoint') {
-            const element = this.elementManager.selectedElements[0];
+            const element = this.selectionService.getSelected()[0];
             if (element && element.type === 'line') {
                 this.isEndpointDragging = true;
                 this.endpointDragState = {
@@ -110,16 +111,17 @@ class TransformController {
         if (e.target.dataset && e.target.dataset.handleType === 'scale') {
             this.isScaling = true;
             this.scaleCorner = e.target.dataset.corner;
-            const bbox = this.elementManager.selectedElements.length === 1
-                ? this.elementManager.selectedElements[0].getBoundingBox()
-                : this.elementManager.calculateBoundingBox();
-            const isGroup = this.elementManager.selectedElements.length > 1;
+            const selected = this.selectionService.getSelected();
+            const bbox = selected.length === 1
+                ? selected[0].getBoundingBox()
+                : this.selectionService.calculateBoundingBox();
+            const isGroup = selected.length > 1;
             const rotationDeg = isGroup
-                ? (this.elementManager.groupRotation || 0)
-                : (this.elementManager.selectedElements[0].rotation || 0);
+                ? (this.selectionService.groupRotation || 0)
+                : (selected[0].rotation || 0);
             const rotationCenter = isGroup
-                ? (this.elementManager.groupRotationCenter || { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 })
-                : { x: this.elementManager.selectedElements[0].position.x, y: this.elementManager.selectedElements[0].position.y };
+                ? (this.selectionService.groupRotationCenter || { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 })
+                : { x: selected[0].position.x, y: selected[0].position.y };
 
             if (rotationDeg !== 0) {
                 const oppositeName = getOppositeCornerName(this.scaleCorner);
@@ -136,7 +138,7 @@ class TransformController {
             }
 
             this.initialDistance = distance(worldPos, this.scaleOppositeCorner);
-            this.initialGroupStates = this.elementManager.selectedElements.map(el => {
+            this.initialGroupStates = selected.map(el => {
                 const state = {
                     element: el,
                     position: { x: el.position.x, y: el.position.y },
@@ -151,8 +153,8 @@ class TransformController {
                 return state;
             });
 
-            const singleElement = this.elementManager.selectedElements.length === 1
-                ? this.elementManager.selectedElements[0]
+            const singleElement = selected.length === 1
+                ? selected[0]
                 : null;
             this.isNonUniformRectScale = !!singleElement
                 && (singleElement.type === 'rectangle' || singleElement.type === 'node');
@@ -194,15 +196,15 @@ class TransformController {
         }
 
         let clickedElement = null;
-        for (const element of this.elementManager.elements) {
+        for (const element of this.elementRegistry.getAll()) {
             if (element.isHitTarget && element.isHitTarget(e.target)) {
                 clickedElement = element;
                 break;
             }
         }
         if (clickedElement) {
-            if (!this.elementManager.selectedElements.includes(clickedElement)) {
-                this.elementManager.selectElement(clickedElement, e.shiftKey);
+            if (!this.selectionService.getSelected().includes(clickedElement)) {
+                this.selectionService.selectElement(clickedElement, e.shiftKey);
             }
             this.isDragging = true;
             this.interactionState.dragOccurred = false;
@@ -237,7 +239,7 @@ class TransformController {
             element.position.x = (element.x1 + element.x2) / 2;
             element.position.y = (element.y1 + element.y2) / 2;
             element.updateSvgPosition();
-            this.elementManager.updateHandles();
+            this.selectionService.updateHandles();
             this.interactionState.dragOccurred = true;
             e.preventDefault();
             return;
@@ -307,7 +309,7 @@ class TransformController {
                     }
                 });
             }
-            this.elementManager.updateHandles();
+            this.selectionService.updateHandles();
             e.preventDefault();
             return;
         }
@@ -317,9 +319,9 @@ class TransformController {
             const currentAngle = Math.atan2(currentWorld.y - this.rotateCenter.y, currentWorld.x - this.rotateCenter.x);
             const deltaAngle = currentAngle - this.rotateStartAngle;
             const deltaDeg = deltaAngle * 180 / Math.PI;
-            if (this.elementManager.selectedElements.length > 1) {
-                this.elementManager.groupRotation = this.initialGroupRotation + deltaDeg;
-                this.elementManager.groupRotationCenter = this.rotateCenter;
+            if (this.selectionService.getSelected().length > 1) {
+                this.selectionService.groupRotation = this.initialGroupRotation + deltaDeg;
+                this.selectionService.groupRotationCenter = this.rotateCenter;
             }
             this.initialRotationStates.forEach(state => {
                 const element = state.element;
@@ -343,7 +345,7 @@ class TransformController {
                     element.updateSvgRotation();
                 }
             });
-            this.elementManager.updateHandles();
+            this.selectionService.updateHandles();
             e.preventDefault();
             return;
         }
@@ -352,13 +354,13 @@ class TransformController {
             const currentWorld = this.camera.clientToWorld(e.clientX, e.clientY);
             const deltaX = currentWorld.x - this.dragStartWorldX;
             const deltaY = currentWorld.y - this.dragStartWorldY;
-            this.elementManager.selectedElements.forEach(element => {
+            this.selectionService.getSelected().forEach(element => {
                 element.move(deltaX, deltaY);
             });
             this.dragStartWorldX = currentWorld.x;
             this.dragStartWorldY = currentWorld.y;
             this.interactionState.dragOccurred = true;
-            this.elementManager.updateHandles();
+            this.selectionService.updateHandles();
             e.preventDefault();
         }
     }
@@ -368,26 +370,26 @@ class TransformController {
         if (this.isBezierDragging) {
             this.isBezierDragging = false;
             this.bezierDragState = null;
-            this.elementManager.updateHandles();
+            this.selectionService.updateHandles();
         }
         if (this.isEndpointDragging) {
             this.isEndpointDragging = false;
             this.endpointDragState = null;
-            this.elementManager.updateHandles();
+            this.selectionService.updateHandles();
         }
         if (this.isScaling) {
             this.isScaling = false;
             this.isNonUniformRectScale = false;
             this.rectScaleState = null;
-            this.elementManager.updateHandles();
+            this.selectionService.updateHandles();
         }
         if (this.isRotating) {
             this.isRotating = false;
-            this.elementManager.updateHandles();
+            this.selectionService.updateHandles();
         }
         if (this.isDragging) {
             this.isDragging = false;
-            this.elementManager.updateHandles();
+            this.selectionService.updateHandles();
         }
         if (wasHandleDrag) {
             this.interactionState.dragOccurred = false;

@@ -1,21 +1,21 @@
-body {
-    margin: 0;
-    padding: 0;
+.workbench {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
     overflow: hidden;
     font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     background-color: #f0f0f0;
 }
 
-.viewport {
+.workbench .viewport {
     position: relative;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
     background-color: #f0f0f0;
 }
 
-#rasterLayer,
-#vectorLayer {
+.workbench [data-workbench-layer] {
     position: absolute;
     top: 0;
     left: 0;
@@ -23,7 +23,7 @@ body {
     height: 100%;
 }
 
-.radial-menu {
+.workbench .radial-menu {
     position: fixed;
     left: 0;
     top: 0;
@@ -36,7 +36,7 @@ body {
     pointer-events: auto;
 }
 
-.radial-menu-line-overlay {
+.workbench .radial-menu-line-overlay {
     position: fixed;
     inset: 0;
     width: 100vw;
@@ -45,13 +45,13 @@ body {
     z-index: 999;
 }
 
-.radial-menu-line {
+.workbench .radial-menu-line {
     stroke: rgba(0, 0, 0, 0.65);
     stroke-width: 2;
     stroke-linecap: round;
 }
 
-.marquee-rect {
+.workbench .marquee-rect {
     fill: rgba(52, 152, 219, 0.15);
     stroke: rgba(52, 152, 219, 0.9);
     stroke-width: 1;
@@ -59,54 +59,54 @@ body {
     pointer-events: none;
 }
 
-.node-rect {
+.workbench .node-rect {
     filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.15));
 }
 
-.node-hover-pad {
+.workbench .node-hover-pad {
     fill: transparent;
     pointer-events: all;
 }
 
-.node-connector {
+.workbench .node-connector {
     cursor: crosshair;
 }
 
-.node-connector-selected {
+.workbench .node-connector-selected {
     stroke: #f39c12;
     stroke-width: 2.4;
 }
 
-.node-add {
+.workbench .node-add {
     opacity: 0;
     transition: opacity 0.15s ease;
     pointer-events: none;
     cursor: pointer;
 }
 
-.node:hover .node-add {
+.workbench .node:hover .node-add {
     opacity: 1;
     pointer-events: auto;
 }
 
-.node-add-circle {
+.workbench .node-add-circle {
     fill: #ffffff;
     stroke: #2c3e50;
     stroke-width: 1.2;
 }
 
-.node-add-line {
+.workbench .node-add-line {
     stroke: #2c3e50;
     stroke-width: 1.4;
     stroke-linecap: round;
 }
 
-.node-text-container {
+.workbench .node-text-container {
     overflow: visible;
     pointer-events: auto;
 }
 
-.node-text-input {
+.workbench .node-text-input {
     width: 100%;
     height: 100%;
     border: 1px solid rgba(44, 62, 80, 0.35);
@@ -121,31 +121,31 @@ body {
     pointer-events: auto;
 }
 
-.node-text-input:focus {
+.workbench .node-text-input:focus {
     border-color: rgba(52, 152, 219, 0.9);
     box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
 }
 
-.connection-line {
+.workbench .connection-line {
     fill: none;
     stroke: rgba(46, 204, 113, 0.9);
     stroke-width: 3;
     pointer-events: stroke;
 }
 
-.connection-hit {
+.workbench .connection-hit {
     fill: none;
     stroke: rgba(0, 0, 0, 0);
     stroke-width: 14;
     pointer-events: stroke;
 }
 
-.connection-line-selected {
+.workbench .connection-line-selected {
     stroke: rgba(241, 196, 15, 0.95);
     stroke-width: 4;
 }
 
-.connection-line-preview {
+.workbench .connection-line-preview {
     stroke-dasharray: 6, 4;
     opacity: 0.7;
     pointer-events: none;
