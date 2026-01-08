@@ -10,6 +10,7 @@ import TransformController from './controllers/TransformController.js';
 import MenuController from './controllers/MenuController.js';
 import SelectionController from './controllers/SelectionController.js';
 import ZoomController from './controllers/ZoomController.js';
+import MarqueeSelectionController from './controllers/MarqueeSelectionController.js';
 
 const viewport = document.getElementById('viewport');
 const rasterLayer = document.getElementById('rasterLayer');
@@ -84,6 +85,7 @@ new MenuController({
     }
 });
 new SelectionController({ vectorLayer, elementManager, interactionState });
+new MarqueeSelectionController({ viewport, world, elementManager, camera, interactionState });
 new ZoomController({ viewport, camera, menu });
 
 document.addEventListener('keydown', (e) => elementManager.handleKeyDown(e));

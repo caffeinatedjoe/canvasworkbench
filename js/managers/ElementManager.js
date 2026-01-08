@@ -57,6 +57,19 @@ class ElementManager {
         this.groupRotationCenter = null;
     }
 
+    setSelection(elements) {
+        this.deselectAll();
+        this.selectedElements = [];
+        elements.forEach(element => {
+            if (!element) return;
+            element.selected = true;
+            this.selectedElements.push(element);
+        });
+        this.groupRotation = 0;
+        this.groupRotationCenter = null;
+        this.updateHandles();
+    }
+
     getSelected() {
         return this.selectedElements;
     }

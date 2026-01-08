@@ -11,15 +11,19 @@ class SelectionController {
     }
 
     onClick(e) {
-        if (this.interactionState.dragOccurred) {
-            this.interactionState.dragOccurred = false;
-            return;
-        }
         const isElementClicked = this.elementManager.elements.some(element => (
             e.target === element.svgElement || element.svgElement.contains(e.target)
         ));
-        if (isElementClicked) {
+        const isHandleClicked = !!(e.target && e.target.dataset && e.target.dataset.handleType);
+        if (this.interactionState.dragOccurred) {
+            this.interactionState.dragOccurred = false;
+            if (!isElementClicked) {
+                return;
+            }
+        }
+        if (isElementClicked || isHandleClicked) {
             e.preventDefault();
+            return;
         }
         this.elementManager.handleClick(e, e.shiftKey);
     }
