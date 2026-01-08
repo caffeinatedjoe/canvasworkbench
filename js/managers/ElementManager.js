@@ -1,3 +1,5 @@
+import { rotatePoint } from '../core/geometry.js';
+
 class ElementManager {
     constructor() {
         this.elements = [];
@@ -60,7 +62,6 @@ class ElementManager {
     }
 
     handleClick(event, shiftKey = false) {
-        // Find the element that was clicked
         let targetElement = null;
         for (const element of this.elements) {
             if (event.target === element.svgElement || element.svgElement.contains(event.target)) {
@@ -94,21 +95,12 @@ class ElementManager {
         const centerX = element.position.x;
         const centerY = element.position.y;
         const rad = element.rotation * Math.PI / 180;
-        const cos = Math.cos(rad);
-        const sin = Math.sin(rad);
         const corners = [
             { x: bbox.x, y: bbox.y },
             { x: bbox.x + bbox.width, y: bbox.y },
             { x: bbox.x + bbox.width, y: bbox.y + bbox.height },
             { x: bbox.x, y: bbox.y + bbox.height }
-        ].map(point => {
-            const dx = point.x - centerX;
-            const dy = point.y - centerY;
-            return {
-                x: centerX + dx * cos - dy * sin,
-                y: centerY + dx * sin + dy * cos
-            };
-        });
+        ].map(point => rotatePoint(point.x, point.y, centerX, centerY, rad));
         let minX = Infinity;
         let minY = Infinity;
         let maxX = -Infinity;
@@ -122,26 +114,18 @@ class ElementManager {
         return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
     }
 
-    rotatePoint(px, py, cx, cy, angleRad) {
-        const cos = Math.cos(angleRad);
-        const sin = Math.sin(angleRad);
-        const dx = px - cx;
-        const dy = py - cy;
-        return {
-            x: cx + dx * cos - dy * sin,
-            y: cy + dx * sin + dy * cos
-        };
-    }
-
     getGroupLocalBoundingBox() {
         const center = this.groupRotationCenter;
         if (!center) return null;
         const invRad = -this.groupRotation * Math.PI / 180;
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
 
         this.selectedElements.forEach(element => {
             if (element.type === 'circle') {
-                const localCenter = this.rotatePoint(element.position.x, element.position.y, center.x, center.y, invRad);
+                const localCenter = rotatePoint(element.position.x, element.position.y, center.x, center.y, invRad);
                 const r = element.r * element.scale;
                 minX = Math.min(minX, localCenter.x - r);
                 minY = Math.min(minY, localCenter.y - r);
@@ -151,8 +135,8 @@ class ElementManager {
             }
 
             if (element.type === 'line') {
-                const p1 = this.rotatePoint(element.x1, element.y1, center.x, center.y, invRad);
-                const p2 = this.rotatePoint(element.x2, element.y2, center.x, center.y, invRad);
+                const p1 = rotatePoint(element.x1, element.y1, center.x, center.y, invRad);
+                const p2 = rotatePoint(element.x2, element.y2, center.x, center.y, invRad);
                 minX = Math.min(minX, p1.x, p2.x);
                 minY = Math.min(minY, p1.y, p2.y);
                 maxX = Math.max(maxX, p1.x, p2.x);
@@ -175,7 +159,7 @@ class ElementManager {
                 corners.forEach(offset => {
                     const worldX = element.position.x + offset.x * cos - offset.y * sin;
                     const worldY = element.position.y + offset.x * sin + offset.y * cos;
-                    const local = this.rotatePoint(worldX, worldY, center.x, center.y, invRad);
+                    const local = rotatePoint(worldX, worldY, center.x, center.y, invRad);
                     minX = Math.min(minX, local.x);
                     minY = Math.min(minY, local.y);
                     maxX = Math.max(maxX, local.x);
@@ -193,7 +177,7 @@ class ElementManager {
                 { x: bbox.x, y: bbox.y + bbox.height }
             ];
             corners.forEach(point => {
-                const local = this.rotatePoint(point.x, point.y, center.x, center.y, invRad);
+                const local = rotatePoint(point.x, point.y, center.x, center.y, invRad);
                 minX = Math.min(minX, local.x);
                 minY = Math.min(minY, local.y);
                 maxX = Math.max(maxX, local.x);
@@ -207,15 +191,16 @@ class ElementManager {
         return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
     }
 
-    // Placeholder for group bounding box calculation (to be implemented in later steps)
     calculateBoundingBox() {
         if (this.selectedElements.length === 0) return null;
         if (this.selectedElements.length > 1 && this.groupRotation !== 0 && this.groupRotationCenter) {
             const rotatedBox = this.getGroupLocalBoundingBox();
             if (rotatedBox) return rotatedBox;
         }
-        // Calculate min bounding box for selected elements
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
         this.selectedElements.forEach(element => {
             const bbox = this.getElementBoundingBox(element);
             if (!bbox) return;
@@ -256,7 +241,6 @@ class ElementManager {
         const bbox = this.calculateBoundingBox();
         if (!bbox) return;
 
-        // Create border (rect around bbox)
         const border = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         border.setAttribute('x', bbox.x);
         border.setAttribute('y', bbox.y);
@@ -266,16 +250,15 @@ class ElementManager {
         border.setAttribute('stroke', 'blue');
         border.setAttribute('stroke-width', 2);
         border.setAttribute('stroke-dasharray', '5,5');
-        this.elements[0].container.appendChild(border); // assuming all elements have same container
+        this.elements[0].container.appendChild(border);
         this.groupHandles.push(border);
 
-        // Corner handles (small squares at corners)
         const handleSize = 8;
         const corners = [
-            { x: bbox.x, y: bbox.y, name: 'top-left' }, // top-left
-            { x: bbox.x + bbox.width, y: bbox.y, name: 'top-right' }, // top-right
-            { x: bbox.x + bbox.width, y: bbox.y + bbox.height, name: 'bottom-right' }, // bottom-right
-            { x: bbox.x, y: bbox.y + bbox.height, name: 'bottom-left' } // bottom-left
+            { x: bbox.x, y: bbox.y, name: 'top-left' },
+            { x: bbox.x + bbox.width, y: bbox.y, name: 'top-right' },
+            { x: bbox.x + bbox.width, y: bbox.y + bbox.height, name: 'bottom-right' },
+            { x: bbox.x, y: bbox.y + bbox.height, name: 'bottom-left' }
         ];
         corners.forEach(corner => {
             const handle = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -293,7 +276,6 @@ class ElementManager {
             this.groupHandles.push(handle);
         });
 
-        // Rotate handle (circle above top-center)
         const rotateHandle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         rotateHandle.setAttribute('cx', bbox.x + bbox.width / 2);
         rotateHandle.setAttribute('cy', bbox.y - 20);
@@ -316,3 +298,5 @@ class ElementManager {
         }
     }
 }
+
+export default ElementManager;
