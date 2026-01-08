@@ -59,6 +59,8 @@ let scaleOppositeCorner;
 let initialDistance;
 let initialScales = [];
 let initialGroupStates = [];
+let isNonUniformRectScale = false;
+let rectScaleState = null;
 let isRotating = false;
 let rotateCenter;
 let rotateStartAngle = 0;
@@ -139,6 +141,42 @@ viewport.addEventListener('mousedown', (e) => {
                 }
                 return state;
             });
+            const singleElement = elementManager.selectedElements.length === 1
+                ? elementManager.selectedElements[0]
+                : null;
+            isNonUniformRectScale = !!singleElement && singleElement.type === 'rectangle';
+            if (isNonUniformRectScale) {
+                const cornerPositions = getCornerPositions(bbox);
+                const handleCorner = cornerPositions[scaleCorner];
+                const oppositeCorner = cornerPositions[getOppositeCornerName(scaleCorner)];
+                const rotationRad = rotationDeg * Math.PI / 180;
+                const handleWorld = rotationDeg !== 0
+                    ? rotatePoint(
+                        handleCorner.x,
+                        handleCorner.y,
+                        rotationCenter.x,
+                        rotationCenter.y,
+                        rotationRad
+                    )
+                    : { x: handleCorner.x, y: handleCorner.y };
+                const oppositeWorld = rotationDeg !== 0
+                    ? rotatePoint(
+                        oppositeCorner.x,
+                        oppositeCorner.y,
+                        rotationCenter.x,
+                        rotationCenter.y,
+                        rotationRad
+                    )
+                    : { x: oppositeCorner.x, y: oppositeCorner.y };
+                rectScaleState = {
+                    element: singleElement,
+                    rotationCenter: { x: rotationCenter.x, y: rotationCenter.y },
+                    rotationRad,
+                    oppositeWorld
+                };
+            } else {
+                rectScaleState = null;
+            }
             e.preventDefault();
             return;
         }
@@ -167,25 +205,68 @@ viewport.addEventListener('mousedown', (e) => {
 viewport.addEventListener('mousemove', (e) => {
     if (isScaling) {
         const currentWorld = clientToWorld(e.clientX, e.clientY);
-        const currentDistance = distance(currentWorld, scaleOppositeCorner);
-        const factor = currentDistance / initialDistance;
-        initialGroupStates.forEach(state => {
-            const element = state.element;
-            if (element.type === 'line') {
-                element.x1 = scaleOppositeCorner.x + (state.x1 - scaleOppositeCorner.x) * factor;
-                element.y1 = scaleOppositeCorner.y + (state.y1 - scaleOppositeCorner.y) * factor;
-                element.x2 = scaleOppositeCorner.x + (state.x2 - scaleOppositeCorner.x) * factor;
-                element.y2 = scaleOppositeCorner.y + (state.y2 - scaleOppositeCorner.y) * factor;
-                element.position.x = (element.x1 + element.x2) / 2;
-                element.position.y = (element.y1 + element.y2) / 2;
-                element.updateSvgPosition();
-            } else {
-                element.scale = state.scale * factor;
-                element.position.x = scaleOppositeCorner.x + (state.position.x - scaleOppositeCorner.x) * factor;
-                element.position.y = scaleOppositeCorner.y + (state.position.y - scaleOppositeCorner.y) * factor;
-                element.updateSvgScale();
-            }
-        });
+        if (isNonUniformRectScale && rectScaleState) {
+            const { element, rotationCenter, rotationRad, oppositeWorld } = rectScaleState;
+            const localOpposite = rotationRad !== 0
+                ? rotatePoint(
+                    oppositeWorld.x,
+                    oppositeWorld.y,
+                    rotationCenter.x,
+                    rotationCenter.y,
+                    -rotationRad
+                )
+                : { x: oppositeWorld.x, y: oppositeWorld.y };
+            const localCurrent = rotationRad !== 0
+                ? rotatePoint(
+                    currentWorld.x,
+                    currentWorld.y,
+                    rotationCenter.x,
+                    rotationCenter.y,
+                    -rotationRad
+                )
+                : { x: currentWorld.x, y: currentWorld.y };
+            const newWidth = Math.max(1, Math.abs(localCurrent.x - localOpposite.x));
+            const newHeight = Math.max(1, Math.abs(localCurrent.y - localOpposite.y));
+            const localCenter = {
+                x: (localCurrent.x + localOpposite.x) / 2,
+                y: (localCurrent.y + localOpposite.y) / 2
+            };
+            const worldCenter = rotationRad !== 0
+                ? rotatePoint(
+                    localCenter.x,
+                    localCenter.y,
+                    rotationCenter.x,
+                    rotationCenter.y,
+                    rotationRad
+                )
+                : localCenter;
+            element.width = newWidth;
+            element.height = newHeight;
+            element.scale = 1;
+            element.position.x = worldCenter.x;
+            element.position.y = worldCenter.y;
+            element.updateSvgScale();
+        } else {
+            const currentDistance = distance(currentWorld, scaleOppositeCorner);
+            const factor = currentDistance / initialDistance;
+            initialGroupStates.forEach(state => {
+                const element = state.element;
+                if (element.type === 'line') {
+                    element.x1 = scaleOppositeCorner.x + (state.x1 - scaleOppositeCorner.x) * factor;
+                    element.y1 = scaleOppositeCorner.y + (state.y1 - scaleOppositeCorner.y) * factor;
+                    element.x2 = scaleOppositeCorner.x + (state.x2 - scaleOppositeCorner.x) * factor;
+                    element.y2 = scaleOppositeCorner.y + (state.y2 - scaleOppositeCorner.y) * factor;
+                    element.position.x = (element.x1 + element.x2) / 2;
+                    element.position.y = (element.y1 + element.y2) / 2;
+                    element.updateSvgPosition();
+                } else {
+                    element.scale = state.scale * factor;
+                    element.position.x = scaleOppositeCorner.x + (state.position.x - scaleOppositeCorner.x) * factor;
+                    element.position.y = scaleOppositeCorner.y + (state.position.y - scaleOppositeCorner.y) * factor;
+                    element.updateSvgScale();
+                }
+            });
+        }
         elementManager.updateHandles();
         e.preventDefault();
     } else if (isRotating) {
@@ -247,6 +328,8 @@ viewport.addEventListener('mousemove', (e) => {
 viewport.addEventListener('mouseup', () => {
     if (isScaling) {
         isScaling = false;
+        isNonUniformRectScale = false;
+        rectScaleState = null;
         elementManager.updateHandles();
     }
     if (isRotating) {
