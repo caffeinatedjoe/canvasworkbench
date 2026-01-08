@@ -12,7 +12,7 @@ class SelectionController {
 
     onClick(e) {
         const isElementClicked = this.elementManager.elements.some(element => (
-            e.target === element.svgElement || element.svgElement.contains(e.target)
+            element.isHitTarget && element.isHitTarget(e.target)
         ));
         const isHandleClicked = !!(e.target && e.target.dataset && e.target.dataset.handleType);
         if (this.interactionState.dragOccurred) {

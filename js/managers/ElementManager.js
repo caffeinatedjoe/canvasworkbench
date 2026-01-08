@@ -83,7 +83,7 @@ class ElementManager {
     handleClick(event, shiftKey = false) {
         let targetElement = null;
         for (const element of this.elements) {
-            if (event.target === element.svgElement || element.svgElement.contains(event.target)) {
+            if (element.isHitTarget && element.isHitTarget(event.target)) {
                 targetElement = element;
                 break;
             }

@@ -113,6 +113,11 @@ class InteractiveElement {
         });
     }
 
+    isHitTarget(target) {
+        if (!this.svgElement) return false;
+        return target === this.svgElement || this.svgElement.contains(target);
+    }
+
     getBoundingBox() {
         return null;
     }

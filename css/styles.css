@@ -99,6 +99,13 @@ body {
     pointer-events: stroke;
 }
 
+.connection-hit {
+    fill: none;
+    stroke: rgba(0, 0, 0, 0);
+    stroke-width: 14;
+    pointer-events: stroke;
+}
+
 .connection-line-selected {
     stroke: rgba(241, 196, 15, 0.95);
     stroke-width: 4;

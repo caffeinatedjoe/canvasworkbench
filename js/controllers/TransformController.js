@@ -18,6 +18,7 @@ class TransformController {
         this.isScaling = false;
         this.isRotating = false;
         this.isEndpointDragging = false;
+        this.isBezierDragging = false;
         this.dragStartWorldX = 0;
         this.dragStartWorldY = 0;
         this.scaleCorner = null;
@@ -31,6 +32,7 @@ class TransformController {
         this.initialRotationStates = [];
         this.initialGroupRotation = 0;
         this.endpointDragState = null;
+        this.bezierDragState = null;
 
         this.bindEvents();
     }
@@ -77,6 +79,19 @@ class TransformController {
             });
             e.preventDefault();
             return;
+        }
+
+        if (e.target.dataset && e.target.dataset.handleType === 'bezier-control') {
+            const element = this.elementManager.selectedElements[0];
+            if (element && element.type === 'connection') {
+                this.isBezierDragging = true;
+                this.bezierDragState = {
+                    element,
+                    control: e.target.dataset.control
+                };
+                e.preventDefault();
+                return;
+            }
         }
 
         if (e.target.dataset && e.target.dataset.handleType === 'line-endpoint') {
@@ -180,7 +195,7 @@ class TransformController {
 
         let clickedElement = null;
         for (const element of this.elementManager.elements) {
-            if (e.target === element.svgElement || element.svgElement.contains(e.target)) {
+            if (element.isHitTarget && element.isHitTarget(e.target)) {
                 clickedElement = element;
                 break;
             }
@@ -196,6 +211,19 @@ class TransformController {
     }
 
     onMouseMove(e) {
+        if (this.isBezierDragging && this.bezierDragState) {
+            const currentWorld = this.camera.clientToWorld(e.clientX, e.clientY);
+            const { element, control } = this.bezierDragState;
+            element.setControlPoint(control, currentWorld);
+            element.update();
+            if (element.selected) {
+                element.renderHandles();
+            }
+            this.interactionState.dragOccurred = true;
+            e.preventDefault();
+            return;
+        }
+
         if (this.isEndpointDragging && this.endpointDragState) {
             const currentWorld = this.camera.clientToWorld(e.clientX, e.clientY);
             const { element, endpoint } = this.endpointDragState;
@@ -336,6 +364,12 @@ class TransformController {
     }
 
     onMouseUp() {
+        const wasHandleDrag = this.isBezierDragging || this.isEndpointDragging || this.isScaling || this.isRotating;
+        if (this.isBezierDragging) {
+            this.isBezierDragging = false;
+            this.bezierDragState = null;
+            this.elementManager.updateHandles();
+        }
         if (this.isEndpointDragging) {
             this.isEndpointDragging = false;
             this.endpointDragState = null;
@@ -354,6 +388,9 @@ class TransformController {
         if (this.isDragging) {
             this.isDragging = false;
             this.elementManager.updateHandles();
+        }
+        if (wasHandleDrag) {
+            this.interactionState.dragOccurred = false;
         }
     }
 }
