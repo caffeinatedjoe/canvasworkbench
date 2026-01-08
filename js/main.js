@@ -66,8 +66,8 @@ function addTextAt(x, y) {
 function addNodeAt(x, y) {
     const id = `node_${elementIdCounter++}`;
     const nodeElement = new NodeElement(id, x - 70, y - 40, 140, 80, world, {
-        inputCount: 2,
-        outputCount: 2
+        inputCount: 1,
+        outputCount: 1
     });
     nodeElement.render();
     elementManager.addElement(nodeElement);

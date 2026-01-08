@@ -8,15 +8,22 @@ class NodeElement extends InteractiveElement {
         super(id, 'node', { x: centerX, y: centerY }, container);
         this.width = width;
         this.height = height;
-        this.inputCount = options.inputCount ?? 2;
-        this.outputCount = options.outputCount ?? 2;
+        this.inputCount = options.inputCount ?? 1;
+        this.outputCount = options.outputCount ?? 1;
         this.cornerRadius = options.cornerRadius ?? 12;
         this.connectorRadius = options.connectorRadius ?? 5;
+        this.addButtonRadius = options.addButtonRadius ?? 7;
+        this.addButtonOffset = options.addButtonOffset ?? 12;
+        this.hoverPadExtra = options.hoverPadExtra ?? (this.addButtonOffset + this.addButtonRadius + 4);
         this.connections = [];
 
         this.svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         this.svgElement.setAttribute('data-element-id', this.id);
         this.svgElement.classList.add('node');
+
+        this.hoverPad = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        this.hoverPad.classList.add('node-hover-pad');
+        this.svgElement.appendChild(this.hoverPad);
 
         this.rectElement = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         this.rectElement.classList.add('node-rect');
@@ -47,24 +54,140 @@ class NodeElement extends InteractiveElement {
 
         this.inputConnectors = this.createConnectors('input', this.inputCount);
         this.outputConnectors = this.createConnectors('output', this.outputCount);
+        this.inputAddButton = this.createAddButton('input');
+        this.outputAddButton = this.createAddButton('output');
+    }
+
+    createConnector(type, index, beforeNode = null) {
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.classList.add('node-connector', `node-connector-${type}`);
+        circle.setAttribute('r', this.connectorRadius);
+        circle.setAttribute('fill', '#ffffff');
+        circle.setAttribute('stroke', '#2c3e50');
+        circle.setAttribute('stroke-width', 1.2);
+        circle.dataset.connectorType = type;
+        circle.dataset.connectorIndex = String(index);
+        circle.dataset.nodeId = this.id;
+        if (beforeNode && beforeNode.parentNode === this.svgElement) {
+            this.svgElement.insertBefore(circle, beforeNode);
+        } else {
+            this.svgElement.appendChild(circle);
+        }
+        return circle;
     }
 
     createConnectors(type, count) {
         const connectors = [];
         for (let i = 0; i < count; i += 1) {
-            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            circle.classList.add('node-connector', `node-connector-${type}`);
-            circle.setAttribute('r', this.connectorRadius);
-            circle.setAttribute('fill', '#ffffff');
-            circle.setAttribute('stroke', '#2c3e50');
-            circle.setAttribute('stroke-width', 1.2);
-            circle.dataset.connectorType = type;
-            circle.dataset.connectorIndex = String(i);
-            circle.dataset.nodeId = this.id;
-            this.svgElement.appendChild(circle);
-            connectors.push(circle);
+            connectors.push(this.createConnector(type, i));
         }
         return connectors;
+    }
+
+    createAddButton(type) {
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.classList.add('node-add', `node-add-${type}`);
+        group.dataset.addType = type;
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('r', this.addButtonRadius);
+        circle.classList.add('node-add-circle');
+        group.appendChild(circle);
+
+        const hLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        hLine.setAttribute('x1', -4);
+        hLine.setAttribute('y1', 0);
+        hLine.setAttribute('x2', 4);
+        hLine.setAttribute('y2', 0);
+        hLine.classList.add('node-add-line');
+        group.appendChild(hLine);
+
+        const vLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        vLine.setAttribute('x1', 0);
+        vLine.setAttribute('y1', -4);
+        vLine.setAttribute('x2', 0);
+        vLine.setAttribute('y2', 4);
+        vLine.classList.add('node-add-line');
+        group.appendChild(vLine);
+
+        group.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+        group.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.addConnector(type);
+            document.dispatchEvent(new CustomEvent('nodeflow:changed'));
+        });
+
+        this.svgElement.appendChild(group);
+        return group;
+    }
+
+    addConnector(type) {
+        const index = type === 'input' ? this.inputCount : this.outputCount;
+        if (type === 'input') {
+            this.inputCount += 1;
+        } else {
+            this.outputCount += 1;
+        }
+        const beforeNode = this.inputAddButton || null;
+        const connector = this.createConnector(type, index, beforeNode);
+        if (type === 'input') {
+            this.inputConnectors.push(connector);
+        } else {
+            this.outputConnectors.push(connector);
+        }
+        this.updateConnectorPositions();
+        this.updateConnections();
+    }
+
+    getConnectorElement(type, index) {
+        const list = type === 'input' ? this.inputConnectors : this.outputConnectors;
+        return list[index] || null;
+    }
+
+    removeConnector(type, index) {
+        const list = type === 'input' ? this.inputConnectors : this.outputConnectors;
+        if (!list[index]) return [];
+
+        const removedConnections = [];
+        this.connections.slice().forEach(connection => {
+            if (type === 'input' && connection.toNode === this) {
+                if (connection.toIndex === index) {
+                    removedConnections.push(connection);
+                } else if (connection.toIndex > index) {
+                    connection.toIndex -= 1;
+                }
+            }
+            if (type === 'output' && connection.fromNode === this) {
+                if (connection.fromIndex === index) {
+                    removedConnections.push(connection);
+                } else if (connection.fromIndex > index) {
+                    connection.fromIndex -= 1;
+                }
+            }
+        });
+
+        const removed = list.splice(index, 1)[0];
+        if (removed) {
+            removed.remove();
+        }
+
+        if (type === 'input') {
+            this.inputCount = Math.max(0, this.inputCount - 1);
+        } else {
+            this.outputCount = Math.max(0, this.outputCount - 1);
+        }
+
+        list.forEach((connector, idx) => {
+            connector.dataset.connectorIndex = String(idx);
+        });
+
+        this.updateConnectorPositions();
+        this.updateConnections();
+        return removedConnections;
     }
 
     render() {
@@ -163,12 +286,38 @@ class NodeElement extends InteractiveElement {
         });
     }
 
+    updateAddButtonPositions() {
+        const halfW = (this.width * this.scale) / 2;
+        const halfH = (this.height * this.scale) / 2;
+        const offset = this.addButtonOffset * this.scale;
+        const y = this.position.y + halfH + offset;
+        const leftX = this.position.x - halfW + offset;
+        const rightX = this.position.x + halfW - offset;
+        if (this.inputAddButton) {
+            this.inputAddButton.setAttribute('transform', `translate(${leftX} ${y})`);
+        }
+        if (this.outputAddButton) {
+            this.outputAddButton.setAttribute('transform', `translate(${rightX} ${y})`);
+        }
+    }
+
+    updateHoverPad() {
+        if (!this.hoverPad) return;
+        const bbox = this.getBoundingBox();
+        const extra = this.hoverPadExtra * this.scale;
+        this.hoverPad.setAttribute('x', bbox.x);
+        this.hoverPad.setAttribute('y', bbox.y);
+        this.hoverPad.setAttribute('width', bbox.width);
+        this.hoverPad.setAttribute('height', bbox.height + extra);
+    }
+
     updateSvgPosition() {
         const bbox = this.getBoundingBox();
         this.rectElement.setAttribute('x', bbox.x);
         this.rectElement.setAttribute('y', bbox.y);
         this.rectElement.setAttribute('width', bbox.width);
         this.rectElement.setAttribute('height', bbox.height);
+        this.updateHoverPad();
         const padding = 8 * this.scale;
         const textWidth = Math.max(0, bbox.width - padding * 2);
         const textHeight = Math.max(0, bbox.height - padding * 2);
@@ -177,6 +326,7 @@ class NodeElement extends InteractiveElement {
         this.textContainer.setAttribute('width', textWidth);
         this.textContainer.setAttribute('height', textHeight);
         this.updateConnectorPositions();
+        this.updateAddButtonPositions();
         this.updateConnections();
     }
 

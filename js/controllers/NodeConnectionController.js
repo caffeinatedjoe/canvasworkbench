@@ -7,36 +7,35 @@ class NodeConnectionController {
         this.camera = camera;
         this.elementManager = elementManager;
         this.isConnecting = false;
+        this.pendingConnector = null;
         this.startNode = null;
         this.startType = null;
         this.startIndex = null;
         this.previewLine = null;
         this.connectionId = 0;
+        this.selectedConnector = null;
+        this.dragThreshold = 4;
         this.onMouseMove = (e) => this.handleMouseMove(e);
         this.onMouseUp = (e) => this.handleMouseUp(e);
+        this.onKeyDown = (e) => this.handleKeyDown(e);
         this.bindEvents();
     }
 
     bindEvents() {
         this.viewport.addEventListener('mousedown', (e) => this.handleMouseDown(e), true);
+        document.addEventListener('keydown', this.onKeyDown);
     }
 
     handleMouseDown(e) {
         const connector = this.getConnectorFromEventTarget(e.target);
-        if (!connector) return;
+        if (!connector) {
+            this.clearSelectedConnector();
+            return;
+        }
         const node = this.elementManager.getElementById(connector.nodeId);
         if (!node || node.type !== 'node') return;
 
-        if (!this.elementManager.selectedElements.includes(node)) {
-            this.elementManager.selectElement(node, e.shiftKey);
-        }
-
-        this.isConnecting = true;
-        this.startNode = node;
-        this.startType = connector.type;
-        this.startIndex = connector.index;
-        this.ensurePreviewLine();
-        this.updatePreviewLine(e.clientX, e.clientY);
+        const isSelected = this.isConnectorSelected(connector);
 
         e.preventDefault();
         if (typeof e.stopImmediatePropagation === 'function') {
@@ -45,20 +44,53 @@ class NodeConnectionController {
             e.stopPropagation();
         }
 
+        if (isSelected) {
+            return;
+        }
+
+        this.pendingConnector = {
+            node,
+            type: connector.type,
+            index: connector.index,
+            clientX: e.clientX,
+            clientY: e.clientY
+        };
+
         window.addEventListener('mousemove', this.onMouseMove);
         window.addEventListener('mouseup', this.onMouseUp);
     }
 
     handleMouseMove(e) {
-        if (!this.isConnecting) return;
+        if (this.isConnecting) {
+            this.updatePreviewLine(e.clientX, e.clientY);
+            e.preventDefault();
+            return;
+        }
+        if (!this.pendingConnector) return;
+        const dx = e.clientX - this.pendingConnector.clientX;
+        const dy = e.clientY - this.pendingConnector.clientY;
+        if (Math.hypot(dx, dy) < this.dragThreshold) return;
+        this.isConnecting = true;
+        this.startNode = this.pendingConnector.node;
+        this.startType = this.pendingConnector.type;
+        this.startIndex = this.pendingConnector.index;
+        this.pendingConnector = null;
+        this.ensurePreviewLine();
         this.updatePreviewLine(e.clientX, e.clientY);
         e.preventDefault();
     }
 
     handleMouseUp(e) {
-        if (!this.isConnecting) return;
         window.removeEventListener('mousemove', this.onMouseMove);
         window.removeEventListener('mouseup', this.onMouseUp);
+
+        if (!this.isConnecting) {
+            if (this.pendingConnector) {
+                this.selectConnector(this.pendingConnector);
+                this.pendingConnector = null;
+            }
+            return;
+        }
 
         const endConnector = this.getConnectorFromEventTarget(e.target);
         if (endConnector) {
@@ -110,6 +142,53 @@ class NodeConnectionController {
         const c2y = end.y + endNormal.y * handleLength;
         const d = `M ${start.x} ${start.y} C ${c1x} ${c1y} ${c2x} ${c2y} ${end.x} ${end.y}`;
         this.previewLine.setAttribute('d', d);
+    }
+
+    selectConnector({ node, type, index }) {
+        const element = node.getConnectorElement(type, index);
+        if (!element) return;
+        this.clearSelectedConnector();
+        this.elementManager.deselectAll();
+        element.classList.add('node-connector-selected');
+        this.selectedConnector = { node, type, index, element };
+    }
+
+    clearSelectedConnector() {
+        if (!this.selectedConnector) return;
+        const { element } = this.selectedConnector;
+        if (element) {
+            element.classList.remove('node-connector-selected');
+        }
+        this.selectedConnector = null;
+    }
+
+    isConnectorSelected(connector) {
+        if (!this.selectedConnector) return false;
+        return (
+            this.selectedConnector.node.id === connector.nodeId &&
+            this.selectedConnector.type === connector.type &&
+            this.selectedConnector.index === connector.index
+        );
+    }
+
+    handleKeyDown(e) {
+        if (!this.selectedConnector) return;
+        const key = e.key.toLowerCase();
+        if (key !== 'delete' && key !== 'backspace') return;
+        const { node, type, index } = this.selectedConnector;
+        const removedConnections = node.removeConnector(type, index);
+        removedConnections.forEach(connection => {
+            connection.destroy();
+            this.elementManager.removeElement(connection);
+        });
+        this.clearSelectedConnector();
+        document.dispatchEvent(new CustomEvent('nodeflow:changed'));
+        e.preventDefault();
+        if (typeof e.stopImmediatePropagation === 'function') {
+            e.stopImmediatePropagation();
+        } else {
+            e.stopPropagation();
+        }
     }
 
     createConnection(endNode, endConnector) {
